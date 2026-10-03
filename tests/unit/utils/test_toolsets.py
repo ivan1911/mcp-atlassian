@@ -6,6 +6,7 @@ from mcp_atlassian.utils.toolsets import (
     ALL_TOOLSETS,
     DEFAULT_TOOLSETS,
     TOOLSET_TAG_PREFIX,
+    ToolsetDefinition,
     get_enabled_toolsets,
     get_toolset_tag,
     should_include_tool_by_toolset,
@@ -107,6 +108,57 @@ class TestGetEnabledToolsets:
         confluence_toolsets = {k for k in ALL_TOOLSETS if k.startswith("confluence_")}
         assert len(jira_toolsets) == 16
         assert len(confluence_toolsets) == 8
+
+
+class TestExplicitOnlyToolsets:
+    """Toolsets marked explicit_only are enabled only when named in TOOLSETS."""
+
+    OPT_IN = "test_opt_in"
+
+    @pytest.fixture(autouse=True)
+    def _register_opt_in_toolset(self, monkeypatch):
+        monkeypatch.setitem(
+            ALL_TOOLSETS,
+            self.OPT_IN,
+            ToolsetDefinition(
+                name=self.OPT_IN,
+                description="Opt-in only",
+                default=False,
+                explicit_only=True,
+            ),
+        )
+        monkeypatch.delenv("TOOLSETS", raising=False)
+
+    @pytest.mark.parametrize(
+        "env_value",
+        [
+            pytest.param(None, id="unset"),
+            pytest.param("", id="empty"),
+            pytest.param("all", id="all"),
+            pytest.param("default", id="default"),
+        ],
+    )
+    def test_not_enabled_implicitly(self, env_value, monkeypatch):
+        if env_value is not None:
+            monkeypatch.setenv("TOOLSETS", env_value)
+        assert self.OPT_IN not in get_enabled_toolsets()
+
+    def test_all_still_enables_every_other_toolset(self, monkeypatch):
+        monkeypatch.setenv("TOOLSETS", "all")
+        assert get_enabled_toolsets() == set(ALL_TOOLSETS) - {self.OPT_IN}
+
+    def test_enabled_when_named(self, monkeypatch):
+        monkeypatch.setenv("TOOLSETS", self.OPT_IN)
+        assert get_enabled_toolsets() == {self.OPT_IN}
+
+    def test_enabled_when_named_alongside_all(self, monkeypatch):
+        monkeypatch.setenv("TOOLSETS", f"all,{self.OPT_IN}")
+        assert get_enabled_toolsets() == set(ALL_TOOLSETS)
+
+    def test_existing_toolsets_are_not_explicit_only(self):
+        assert not any(
+            d.explicit_only for n, d in ALL_TOOLSETS.items() if n != self.OPT_IN
+        )
 
 
 class TestShouldIncludeToolByToolset:
