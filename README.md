@@ -7,7 +7,7 @@
 ![License](https://img.shields.io/github/license/sooperset/mcp-atlassian)
 [![Docs](https://img.shields.io/badge/docs-mintlify-blue)](https://mcp-atlassian.soomiles.com)
 
-Model Context Protocol (MCP) server for Atlassian products (Confluence and Jira). Supports both Cloud and Server/Data Center deployments.
+Model Context Protocol (MCP) server for Atlassian products (Confluence, Jira and Bitbucket Data Center). Supports both Cloud and Server/Data Center deployments for Jira and Confluence, and Bitbucket Data Center.
 
 https://github.com/user-attachments/assets/35303504-14c6-4ae4-913b-7c25ea511c3e
 
@@ -51,6 +51,8 @@ Add to your Claude Desktop or Cursor MCP configuration:
 
 > **Server/Data Center users**: Use `JIRA_PERSONAL_TOKEN` instead of `JIRA_USERNAME` + `JIRA_API_TOKEN`. See [Authentication](https://mcp-atlassian.soomiles.com/docs/authentication) for details.
 
+> **Bitbucket Data Center**: add `"BITBUCKET_URL": "https://bitbucket.your-company.com"` and `"BITBUCKET_PERSONAL_TOKEN": "your_http_access_token"`. Only Data Center with an HTTP access token is supported (no Bitbucket Cloud). Restrict access with `BITBUCKET_PROJECTS_FILTER`; see [.env.example](.env.example).
+
 #### Autohand Code
 
 Use the same `uvx` server with your Atlassian credentials:
@@ -77,6 +79,7 @@ Ask your AI assistant to:
 - **"Search Confluence for onboarding docs"**
 - **"Create a bug ticket for the login issue"**
 - **"Update the status of PROJ-123 to Done"**
+- **"Review pull request #42 in PLAT/api and leave inline comments"**
 
 ## Documentation
 
@@ -92,7 +95,7 @@ Documentation is also available in [llms.txt format](https://llmstxt.org/), whic
 | [Authentication](https://mcp-atlassian.soomiles.com/docs/authentication) | API tokens, PAT, OAuth 2.0 |
 | [Configuration](https://mcp-atlassian.soomiles.com/docs/configuration) | IDE setup, environment variables |
 | [HTTP Transport](https://mcp-atlassian.soomiles.com/docs/http-transport) | SSE, streamable-http, multi-user |
-| [Tools Reference](https://mcp-atlassian.soomiles.com/docs/tools-reference) | All Jira & Confluence tools |
+| [Tools Reference](https://mcp-atlassian.soomiles.com/docs/tools-reference) | All Jira, Confluence & Bitbucket tools |
 | [Troubleshooting](https://mcp-atlassian.soomiles.com/docs/troubleshooting) | Common issues & debugging |
 
 ## Compatibility
@@ -103,16 +106,18 @@ Documentation is also available in [llms.txt format](https://llmstxt.org/), whic
 | Confluence | Server/Data Center | Supported (v6.0+) |
 | Jira | Cloud | Fully supported |
 | Jira | Server/Data Center | Supported (v8.14+) |
+| Bitbucket | Data Center | Supported (v8.0+, tested on 10.x) |
+| Bitbucket | Cloud | Not supported |
 
 ## Key Tools
 
-| Jira | Confluence |
-|------|------------|
-| `jira_search` - Search with JQL | `confluence_search` - Search with CQL |
-| `jira_get_issue` - Get issue details | `confluence_get_page` - Get page content |
-| `jira_create_issue` - Create issues | `confluence_create_page` - Create pages |
-| `jira_update_issue` - Update issues | `confluence_update_page` - Update pages |
-| `jira_transition_issue` - Change status | `confluence_add_comment` - Add comments |
+| Jira | Confluence | Bitbucket |
+|------|------------|-----------|
+| `jira_search` - Search with JQL | `confluence_search` - Search with CQL | `bitbucket_get_my_pull_requests` - My review inbox |
+| `jira_get_issue` - Get issue details | `confluence_get_page` - Get page content | `bitbucket_get_pull_request_diff` - Pull request diff |
+| `jira_create_issue` - Create issues | `confluence_create_page` - Create pages | `bitbucket_add_pull_request_comment` - Inline comments |
+| `jira_update_issue` - Update issues | `confluence_update_page` - Update pages | `bitbucket_get_file_content` - Read code |
+| `jira_transition_issue` - Change status | `confluence_add_comment` - Add comments | `bitbucket_create_pull_request` - Open pull requests |
 
 **128 tools total** — See [Tools Reference](https://mcp-atlassian.soomiles.com/docs/tools-reference) for the complete list.
 
