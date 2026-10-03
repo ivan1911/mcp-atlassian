@@ -177,6 +177,8 @@ CATEGORY_TOOLS: dict[str, list[str]] = {
         "bitbucket_get_pull_request_commits",
         "bitbucket_get_pull_request_diff",
         "bitbucket_get_pull_request_activity",
+        "bitbucket_add_pull_request_comment",
+        "bitbucket_update_pull_request_comment",
     ],
 }
 

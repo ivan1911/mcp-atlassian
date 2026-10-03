@@ -9,6 +9,7 @@ from pydantic import Field
 
 from mcp_atlassian.servers.dependencies import get_bitbucket_fetcher
 from mcp_atlassian.servers.error_handling import ErrorPreservingFastMCP
+from mcp_atlassian.utils.decorators import check_write_access
 
 logger = logging.getLogger(__name__)
 
@@ -796,3 +797,150 @@ async def get_pull_request_activity(
         project_key, repo_slug, pull_request_id, start=start, limit=limit
     )
     return _to_json(page.to_simplified_dict())
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "write", "toolset:bitbucket_pr_review"},
+    annotations={"title": "Add Pull Request Comment", "destructiveHint": False},
+)
+@check_write_access
+async def add_pull_request_comment(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    pull_request_id: PullRequestIdParam,
+    text: Annotated[
+        str, Field(description="Comment text in Bitbucket markdown.", min_length=1)
+    ],
+    path: Annotated[
+        str | None,
+        Field(
+            description=(
+                "(Optional) File path: comments on the file, or on a line of it "
+                "together with 'line'."
+            ),
+            default=None,
+        ),
+    ] = None,
+    line: Annotated[
+        int | None,
+        Field(
+            description=(
+                "(Optional) Line number in the diff for an inline comment: the "
+                "new-file line for ADDED/CONTEXT lines, the old-file line for "
+                "REMOVED lines (see the hunk headers of the pull request diff)."
+            ),
+            default=None,
+            ge=1,
+        ),
+    ] = None,
+    line_type: Annotated[
+        Literal["ADDED", "REMOVED", "CONTEXT"] | None,
+        Field(
+            description="(Optional) Kind of the commented diff line (default ADDED).",
+            default=None,
+        ),
+    ] = None,
+    file_type: Annotated[
+        Literal["FROM", "TO"] | None,
+        Field(
+            description=(
+                "(Optional) Diff side: FROM (old) or TO (new). Inferred from "
+                "line_type when omitted."
+            ),
+            default=None,
+        ),
+    ] = None,
+    parent_comment_id: Annotated[
+        int | None,
+        Field(description="(Optional) Reply to this comment id.", default=None),
+    ] = None,
+    as_task: Annotated[
+        bool,
+        Field(
+            description="Create a task: a blocking comment that must be resolved.",
+            default=False,
+        ),
+    ] = False,
+) -> str:
+    """Comment on a pull request: general, file, inline line, reply, or task.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        pull_request_id: Pull request id.
+        text: Comment text.
+        path: File path.
+        line: Diff line number.
+        line_type: ADDED, REMOVED or CONTEXT.
+        file_type: FROM or TO.
+        parent_comment_id: Comment to reply to.
+        as_task: Create a task.
+
+    Returns:
+        JSON of the created comment.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    comment = fetcher.add_pull_request_comment(
+        project_key,
+        repo_slug,
+        pull_request_id,
+        text,
+        path=path,
+        line=line,
+        line_type=line_type,
+        file_type=file_type,
+        parent_comment_id=parent_comment_id,
+        as_task=as_task,
+    )
+    return _to_json(comment.to_simplified_dict())
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "write", "toolset:bitbucket_pr_review"},
+    annotations={"title": "Update Pull Request Comment", "destructiveHint": False},
+)
+@check_write_access
+async def update_pull_request_comment(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    pull_request_id: PullRequestIdParam,
+    comment_id: Annotated[int, Field(description="Comment or task id.", ge=1)],
+    text: Annotated[
+        str | None,
+        Field(description="(Optional) New comment text.", default=None, min_length=1),
+    ] = None,
+    task_state: Annotated[
+        Literal["open", "resolved"] | None,
+        Field(
+            description="(Optional) For a task: 'resolved' or 'open' (reopen).",
+            default=None,
+        ),
+    ] = None,
+) -> str:
+    """Edit a pull request comment's text, or resolve / reopen a task.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        pull_request_id: Pull request id.
+        comment_id: Comment id.
+        text: New text.
+        task_state: New task state.
+
+    Returns:
+        JSON of the updated comment.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    comment = fetcher.update_pull_request_comment(
+        project_key,
+        repo_slug,
+        pull_request_id,
+        comment_id,
+        text=text,
+        task_state=task_state,
+    )
+    return _to_json(comment.to_simplified_dict())

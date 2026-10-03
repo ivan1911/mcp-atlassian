@@ -9,9 +9,12 @@ from .config import BitbucketConfig
 from .diff import DiffMixin
 from .projects import ProjectsMixin
 from .pull_requests import PullRequestsMixin
+from .review import ReviewMixin
 
 
-class BitbucketFetcher(ProjectsMixin, CodeMixin, PullRequestsMixin, DiffMixin):
+class BitbucketFetcher(
+    ProjectsMixin, CodeMixin, PullRequestsMixin, DiffMixin, ReviewMixin
+):
     """Main entry point for Bitbucket operations, composed from mixins.
 
     Available mixins:
@@ -19,7 +22,9 @@ class BitbucketFetcher(ProjectsMixin, CodeMixin, PullRequestsMixin, DiffMixin):
     - CodeMixin: files, branches, tags and commits
     - DiffMixin: commit diffs as unified text
     - PullRequestsMixin: finding and reading pull requests
+    - ReviewMixin: pull request comments and tasks
     - PullRequestsMixin: finding and reading pull requests
+    - ReviewMixin: pull request comments and tasks
     """
 
 

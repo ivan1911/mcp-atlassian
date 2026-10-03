@@ -206,6 +206,11 @@ class BitbucketClient:
             raise ValueError("repo_slug must not be empty.")
         return f"{API}/projects/{segment(key)}/repos/{segment(slug)}"
 
+    def _pr_path(self, project_key: str, repo_slug: str, pull_request_id: int) -> str:
+        """API path of a pull request, after enforcing the projects filter."""
+        repo = self._repo_path(project_key, repo_slug)
+        return f"{repo}/pull-requests/{int(pull_request_id)}"
+
     def _request(
         self,
         method: str,

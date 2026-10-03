@@ -17,10 +17,6 @@ from .diff import DiffMixin
 class PullRequestsMixin(DiffMixin):
     """Pull request listing and reading."""
 
-    def _pr_path(self, project_key: str, repo_slug: str, pull_request_id: int) -> str:
-        repo = self._repo_path(project_key, repo_slug)
-        return f"{repo}/pull-requests/{int(pull_request_id)}"
-
     def list_pull_requests(
         self,
         project_key: str,
