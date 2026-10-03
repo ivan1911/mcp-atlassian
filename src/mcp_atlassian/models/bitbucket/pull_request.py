@@ -143,7 +143,9 @@ def merge_status_from_api(data: dict[str, Any]) -> dict[str, Any]:
     for veto in data.get("vetoes") or []:
         summary = veto.get("summaryMessage") or ""
         detail = veto.get("detailedMessage") or ""
-        vetoes.append(f"{summary}: {detail}" if summary and detail else summary or detail)
+        vetoes.append(
+            f"{summary}: {detail}" if summary and detail else summary or detail
+        )
     return {
         "can_merge": bool(data.get("canMerge", False)),
         "conflicted": bool(data.get("conflicted", False)),

@@ -81,7 +81,9 @@ class TestMyPullRequests:
         )
         config = dataclasses.replace(bitbucket_config, projects_filter="PLAT")
         async with bitbucket_mcp_factory(config) as client:
-            result = await client.call("bitbucket_get_my_pull_requests", role="REVIEWER")
+            result = await client.call(
+                "bitbucket_get_my_pull_requests", role="REVIEWER"
+            )
 
         assert [(p["id"], p["target"]["project_key"]) for p in result["values"]] == [
             (7, "PLAT")
@@ -106,7 +108,9 @@ class TestGetPullRequest:
             ),
         )
 
-        result = await bb.call("bitbucket_get_pull_request", **repo_args(pull_request_id=7))
+        result = await bb.call(
+            "bitbucket_get_pull_request", **repo_args(pull_request_id=7)
+        )
 
         assert result["id"] == 7
         assert result["version"] == 5

@@ -428,3 +428,57 @@ def pull_request(
         },
         **extra,
     }
+
+
+def comment_payload(
+    comment_id: int,
+    text: str,
+    *,
+    author: str = "bob",
+    version: int = 0,
+    severity: str = "NORMAL",
+    state: str = "OPEN",
+    replies: list[dict[str, Any]] | None = None,
+    anchor: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build a Bitbucket pull request comment payload."""
+    result: dict[str, Any] = {
+        "id": comment_id,
+        "version": version,
+        "text": text,
+        "author": user(author),
+        "createdDate": 1_700_000_000_000,
+        "updatedDate": 1_700_000_000_000,
+        "severity": severity,
+        "state": state,
+        "comments": replies or [],
+    }
+    if anchor is not None:
+        result["anchor"] = anchor
+    return result
+
+
+def inline_anchor(
+    path: str, line: int, line_type: str = "ADDED", file_type: str = "TO"
+) -> dict[str, Any]:
+    """Build an inline comment anchor."""
+    return {
+        "path": path,
+        "srcPath": path,
+        "line": line,
+        "lineType": line_type,
+        "fileType": file_type,
+        "diffType": "EFFECTIVE",
+        "orphaned": False,
+    }
+
+
+def activity(activity_id: int, action: str, actor: str = "bob", **extra: Any):
+    """Build a pull request activity entry."""
+    return {
+        "id": activity_id,
+        "createdDate": 1_700_000_000_000,
+        "user": user(actor),
+        "action": action,
+        **extra,
+    }

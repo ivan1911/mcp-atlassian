@@ -721,242 +721,53 @@ async def get_pull_request_commits(
     return _to_json(page.to_simplified_dict())
 
 
-PullRequestIdParam = Annotated[int, Field(description="Pull request id.", ge=1)]
-PullRequestStateParam = Annotated[
-    str,
-    Field(
-        description="Pull request state: OPEN, MERGED, DECLINED or ALL.",
-        default="OPEN",
-        pattern="^(OPEN|MERGED|DECLINED|ALL)$",
-    ),
-]
-
-
 @bitbucket_mcp.tool(
     tags={"bitbucket", "read", "toolset:bitbucket_pull_requests"},
-    annotations={"title": "List Pull Requests", "readOnlyHint": True},
+    annotations={"title": "Get Pull Request Diff", "readOnlyHint": True},
 )
-async def list_pull_requests(
-    ctx: Context,
-    project_key: ProjectKeyParam,
-    repo_slug: RepoSlugParam,
-    state: PullRequestStateParam = "OPEN",
-    direction: Annotated[
-        str,
-        Field(
-            description=(
-                "INCOMING: pull requests into this repository; OUTGOING: pull "
-                "requests from it."
-            ),
-            default="INCOMING",
-            pattern="^(INCOMING|OUTGOING)$",
-        ),
-    ] = "INCOMING",
-    target_branch: Annotated[
-        str | None,
-        Field(
-            description=(
-                "(Optional) Only pull requests into this branch (from it when "
-                "direction is OUTGOING)."
-            ),
-            default=None,
-        ),
-    ] = None,
-    author: Annotated[
-        str | None,
-        Field(description="(Optional) Author user slug.", default=None),
-    ] = None,
-    reviewer: Annotated[
-        str | None,
-        Field(description="(Optional) Reviewer user slug.", default=None),
-    ] = None,
-    text: Annotated[
-        str | None,
-        Field(
-            description="(Optional) Text to find in the title or description.",
-            default=None,
-        ),
-    ] = None,
-    start: StartParam = 0,
-    limit: LimitParam = 25,
-) -> str:
-    """List pull requests of a repository, newest first.
-
-    Args:
-        ctx: The FastMCP context.
-        project_key: Project key.
-        repo_slug: Repository slug.
-        state: Pull request state.
-        direction: INCOMING or OUTGOING.
-        target_branch: Branch filter.
-        author: Author filter.
-        reviewer: Reviewer filter.
-        text: Title/description filter.
-        start: Index of the first pull request (paging).
-        limit: Maximum number of pull requests.
-
-    Returns:
-        JSON with ``values`` (pull requests with id, version, title, state,
-        author, source, target, reviewers) and paging fields.
-    """
-    fetcher = await get_bitbucket_fetcher(ctx)
-    page = fetcher.list_pull_requests(
-        project_key,
-        repo_slug,
-        state=state,
-        direction=direction,
-        target_branch=target_branch,
-        author=author,
-        reviewer=reviewer,
-        text=text,
-        start=start,
-        limit=limit,
-    )
-    return _to_json(page.to_simplified_dict())
-
-
-@bitbucket_mcp.tool(
-    tags={"bitbucket", "read", "toolset:bitbucket_pull_requests"},
-    annotations={"title": "Get My Pull Requests", "readOnlyHint": True},
-)
-async def get_my_pull_requests(
-    ctx: Context,
-    role: Annotated[
-        str | None,
-        Field(
-            description=(
-                "(Optional) Your role: AUTHOR, REVIEWER or PARTICIPANT. "
-                "Default: any role."
-            ),
-            default=None,
-            pattern="^(AUTHOR|REVIEWER|PARTICIPANT)$",
-        ),
-    ] = None,
-    state: PullRequestStateParam = "OPEN",
-    participant_status: Annotated[
-        str | None,
-        Field(
-            description=(
-                "(Optional) Your reviewer status: APPROVED, UNAPPROVED or NEEDS_WORK."
-            ),
-            default=None,
-            pattern="^(APPROVED|UNAPPROVED|NEEDS_WORK)$",
-        ),
-    ] = None,
-    start: StartParam = 0,
-    limit: LimitParam = 25,
-) -> str:
-    """List your pull requests across repositories (the Bitbucket dashboard).
-
-    Args:
-        ctx: The FastMCP context.
-        role: Your role in the pull request.
-        state: Pull request state.
-        participant_status: Your reviewer status.
-        start: Index of the first pull request (paging).
-        limit: Maximum number of pull requests.
-
-    Returns:
-        JSON with ``values`` (pull requests) and paging fields. Pull requests
-        outside BITBUCKET_PROJECTS_FILTER are left out.
-    """
-    fetcher = await get_bitbucket_fetcher(ctx)
-    page = fetcher.get_my_pull_requests(
-        role=role,
-        state=state,
-        participant_status=participant_status,
-        start=start,
-        limit=limit,
-    )
-    return _to_json(page.to_simplified_dict())
-
-
-@bitbucket_mcp.tool(
-    tags={"bitbucket", "read", "toolset:bitbucket_pull_requests"},
-    annotations={"title": "Get Pull Request", "readOnlyHint": True},
-)
-async def get_pull_request(
+async def get_pull_request_diff(
     ctx: Context,
     project_key: ProjectKeyParam,
     repo_slug: RepoSlugParam,
     pull_request_id: PullRequestIdParam,
-    include_merge_status: Annotated[
-        bool,
-        Field(
-            description=(
-                "Also check whether it can be merged and what blocks it "
-                "(conflicts, merge checks). Costs one more request."
-            ),
-            default=False,
-        ),
-    ] = False,
+    path: DiffPathParam = None,
+    context_lines: ContextLinesParam = None,
+    ignore_whitespace: IgnoreWhitespaceParam = False,
 ) -> str:
-    """Get a pull request with its description, branches and reviewers.
+    """Get a pull request's change as unified diff text, whole or per file.
+
+    Hunk headers give the line numbers needed for inline comments: '+' lines
+    are ADDED (new file side), '-' lines REMOVED (old side), ' ' CONTEXT.
 
     Args:
         ctx: The FastMCP context.
         project_key: Project key.
         repo_slug: Repository slug.
         pull_request_id: Pull request id.
-        include_merge_status: Add ``merge_status``.
+        path: Only this file.
+        context_lines: Lines of context around changes.
+        ignore_whitespace: Ignore whitespace-only changes.
 
     Returns:
-        JSON pull request with ``version`` (pass it back to update, merge or
-        decline it), reviewers with their reviewer status and, on request,
-        ``merge_status`` (can_merge, conflicted, outcome, vetoes).
+        A ``#`` header line (plus a truncation notice when Bitbucket cut the
+        diff; then review file by file) followed by unified diff text.
     """
     fetcher = await get_bitbucket_fetcher(ctx)
-    pull_request = fetcher.get_pull_request(
+    return fetcher.get_pull_request_diff(
         project_key,
         repo_slug,
         pull_request_id,
-        include_merge_status=include_merge_status,
+        path=path,
+        context_lines=context_lines,
+        ignore_whitespace=ignore_whitespace,
     )
-    return _to_json(pull_request.to_simplified_dict())
 
 
 @bitbucket_mcp.tool(
     tags={"bitbucket", "read", "toolset:bitbucket_pull_requests"},
-    annotations={"title": "Get Pull Request Changes", "readOnlyHint": True},
+    annotations={"title": "Get Pull Request Activity", "readOnlyHint": True},
 )
-async def get_pull_request_changes(
-    ctx: Context,
-    project_key: ProjectKeyParam,
-    repo_slug: RepoSlugParam,
-    pull_request_id: PullRequestIdParam,
-    start: StartParam = 0,
-    limit: Annotated[
-        int,
-        Field(
-            description="Maximum number of files (1-1000)", default=100, ge=1, le=1000
-        ),
-    ] = 100,
-) -> str:
-    """List the files a pull request changes, with the change type.
-
-    Args:
-        ctx: The FastMCP context.
-        project_key: Project key.
-        repo_slug: Repository slug.
-        pull_request_id: Pull request id.
-        start: Index of the first file (paging).
-        limit: Maximum number of files.
-
-    Returns:
-        JSON with ``values`` (path, type, src_path for moves/copies) and paging.
-    """
-    fetcher = await get_bitbucket_fetcher(ctx)
-    page = fetcher.get_pull_request_changes(
-        project_key, repo_slug, pull_request_id, start=start, limit=limit
-    )
-    return _to_json(page.to_simplified_dict())
-
-
-@bitbucket_mcp.tool(
-    tags={"bitbucket", "read", "toolset:bitbucket_pull_requests"},
-    annotations={"title": "Get Pull Request Commits", "readOnlyHint": True},
-)
-async def get_pull_request_commits(
+async def get_pull_request_activity(
     ctx: Context,
     project_key: ProjectKeyParam,
     repo_slug: RepoSlugParam,
@@ -964,21 +775,24 @@ async def get_pull_request_commits(
     start: StartParam = 0,
     limit: LimitParam = 25,
 ) -> str:
-    """List the commits of a pull request, newest first.
+    """Get pull request activity: comment threads, tasks, approvals, updates.
+
+    Comments include replies, inline anchors (path, line, line_type,
+    file_type), ``is_task`` and task ``state``. Newest first.
 
     Args:
         ctx: The FastMCP context.
         project_key: Project key.
         repo_slug: Repository slug.
         pull_request_id: Pull request id.
-        start: Index of the first commit (paging).
-        limit: Maximum number of commits.
+        start: Index of the first activity (paging).
+        limit: Maximum number of activities.
 
     Returns:
-        JSON with ``values`` (id, message, author, timestamps) and paging.
+        JSON with ``values`` (activities) and paging fields.
     """
     fetcher = await get_bitbucket_fetcher(ctx)
-    page = fetcher.get_pull_request_commits(
+    page = fetcher.get_pull_request_activity(
         project_key, repo_slug, pull_request_id, start=start, limit=limit
     )
     return _to_json(page.to_simplified_dict())

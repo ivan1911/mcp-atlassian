@@ -11,7 +11,7 @@ from .projects import ProjectsMixin
 from .pull_requests import PullRequestsMixin
 
 
-class BitbucketFetcher(ProjectsMixin, CodeMixin, DiffMixin, PullRequestsMixin):
+class BitbucketFetcher(ProjectsMixin, CodeMixin, PullRequestsMixin, DiffMixin):
     """Main entry point for Bitbucket operations, composed from mixins.
 
     Available mixins:

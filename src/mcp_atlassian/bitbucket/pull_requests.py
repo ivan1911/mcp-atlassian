@@ -7,12 +7,14 @@ from ..models.bitbucket import (
     BitbucketCommit,
     BitbucketPage,
     BitbucketPullRequest,
+    activity_from_api,
     merge_status_from_api,
 )
-from .client import API, BitbucketClient, qualify_branch
+from .client import API, qualify_branch
+from .diff import DiffMixin
 
 
-class PullRequestsMixin(BitbucketClient):
+class PullRequestsMixin(DiffMixin):
     """Pull request listing and reading."""
 
     def _pr_path(self, project_key: str, repo_slug: str, pull_request_id: int) -> str:
@@ -158,3 +160,56 @@ class PullRequestsMixin(BitbucketClient):
         path = self._pr_path(project_key, repo_slug, pull_request_id)
         data = self._get_page(f"{path}/commits", start=start, limit=limit)
         return BitbucketPage.from_api_response(data, item_model=BitbucketCommit)
+
+    def get_pull_request_diff(
+        self,
+        project_key: str,
+        repo_slug: str,
+        pull_request_id: int,
+        *,
+        path: str | None = None,
+        context_lines: int | None = None,
+        ignore_whitespace: bool = False,
+    ) -> str:
+        """Unified diff of a pull request (target branch to source branch).
+
+        Args:
+            project_key: Project key.
+            repo_slug: Repository slug.
+            pull_request_id: Pull request id.
+            path: Only this file.
+            context_lines: Lines of context around changes.
+            ignore_whitespace: Ignore whitespace-only changes.
+
+        Returns:
+            A header line (with a truncation notice when Bitbucket cut the
+            diff) followed by unified diff text.
+        """
+        path_prefix = self._pr_path(project_key, repo_slug, pull_request_id)
+        return self._render_diff(
+            f"{path_prefix}/diff",
+            f"Diff of pull request #{int(pull_request_id)}",
+            path=path,
+            context_lines=context_lines,
+            ignore_whitespace=ignore_whitespace,
+        )
+
+    def get_pull_request_activity(
+        self,
+        project_key: str,
+        repo_slug: str,
+        pull_request_id: int,
+        *,
+        start: int = 0,
+        limit: int = 25,
+    ) -> BitbucketPage:
+        """List pull request activity, newest first.
+
+        Comment activities carry the whole thread (replies, anchor, task
+        state). Unknown activity kinds are passed through raw.
+        """
+        path = self._pr_path(project_key, repo_slug, pull_request_id)
+        data = self._get_page(f"{path}/activities", start=start, limit=limit)
+        page = BitbucketPage.from_api_response(data)
+        page.values = [activity_from_api(a) for a in page.values if isinstance(a, dict)]
+        return page
