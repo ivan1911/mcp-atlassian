@@ -13,21 +13,23 @@ pytestmark = pytest.mark.anyio
 SEARCH = "/rest/search/latest/search"
 
 
-def hit(project_key, slug, path, lines, hit_count=1):
+def hit(project_key, slug, path, lines, hit_count=1, path_matches=None):
     return {
         "repository": repository(project_key, slug),
         "file": path,
-        "hitContexts": [[{"line": n, "text": text} for n, text in lines]],
-        "pathMatches": [],
+        "hitContexts": [[{"line": n, "text": text} for n, text in lines]]
+        if lines
+        else [],
+        "pathMatches": path_matches or [],
         "hitCount": hit_count,
     }
 
 
-def results(values, *, is_last_page=True, next_start=None, start=0):
+def results(values, *, is_last_page=True, next_start=None, start=0, count=None):
     code = {
         "category": "primary",
         "isLastPage": is_last_page,
-        "count": len(values),
+        "count": len(values) if count is None else count,
         "start": start,
         "values": values,
     }
@@ -52,6 +54,7 @@ async def test_returns_file_repository_and_matching_lines(bb, fake_bitbucket):
             ],
             is_last_page=False,
             next_start=25,
+            count=40,
         ),
     )
 
@@ -64,11 +67,12 @@ async def test_returns_file_repository_and_matching_lines(bb, fake_bitbucket):
             "path": "src/auth.py",
             "hit_count": 2,
             "matches": [
-                {"line": 11, "text": "def login(user):"},
+                {"line": 11, "text": "def login(user):", "match": True},
                 {"line": 12, "text": "    a < b"},
             ],
         }
     ]
+    assert result["total"] == 40
     assert result["next_page_start"] == 25
     (request,) = fake_bitbucket.requests_to("POST", SEARCH)
     assert request.body == {
@@ -76,6 +80,38 @@ async def test_returns_file_repository_and_matching_lines(bb, fake_bitbucket):
         "entities": {"code": {"start": 0, "limit": 25}},
         "limits": {"primary": 25, "secondary": 10},
     }
+
+
+async def test_file_name_match_is_flagged(bb, fake_bitbucket):
+    fake_bitbucket.add(
+        "POST",
+        SEARCH,
+        results(
+            [
+                hit(
+                    "PLAT",
+                    "api",
+                    "123.txt",
+                    [],
+                    hit_count=0,
+                    path_matches=[{"text": "123", "match": True}, {"text": ".txt"}],
+                )
+            ]
+        ),
+    )
+
+    result = await bb.call("bitbucket_search_code", query="123")
+
+    assert result["values"] == [
+        {
+            "project_key": "PLAT",
+            "repo_slug": "api",
+            "path": "123.txt",
+            "hit_count": 0,
+            "path_match": True,
+            "matches": [],
+        }
+    ]
 
 
 async def test_narrows_to_project_and_repository(bb, fake_bitbucket):
@@ -148,7 +184,7 @@ class TestProjectsFilter:
         assert request.body["query"] == "x project:PLAT"
         assert [v["project_key"] for v in result["values"]] == ["PLAT"]
 
-    async def test_several_allowed_projects_filter_hits(
+    async def test_several_allowed_projects_are_ored_into_the_query(
         self, bitbucket_mcp_factory, bitbucket_config, fake_bitbucket
     ):
         fake_bitbucket.add(
@@ -166,6 +202,9 @@ class TestProjectsFilter:
         async with bitbucket_mcp_factory(config) as client:
             result = await client.call("bitbucket_search_code", query="x")
 
+        (request,) = fake_bitbucket.requests_to("POST", SEARCH)
+        # Bitbucket ANDs bare project: terms; OR inside parentheses spans both.
+        assert request.body["query"] == "x (project:OPS OR project:PLAT)"
         assert [v["project_key"] for v in result["values"]] == ["PLAT", "OPS"]
 
     async def test_refuses_project_outside_filter(

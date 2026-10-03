@@ -7,7 +7,6 @@ diffs are fetched as JSON and rendered here.
 
 from typing import Any
 
-
 _SEGMENT_PREFIX = {"ADDED": "+", "REMOVED": "-", "CONTEXT": " "}
 
 TRUNCATION_NOTICE = (

@@ -1393,9 +1393,10 @@ async def search_code(
 ) -> str:
     """Search code in Bitbucket and return files with matching lines.
 
-    Uses Bitbucket's unofficial search endpoint (no public code search API
-    exists in Data Center); it needs a configured search server and may be
-    unavailable. On failure, browse with bitbucket_list_files instead.
+    Only default branches are indexed. Uses Bitbucket's unofficial search
+    endpoint (no public code search API exists in Data Center); it needs a
+    configured search server and may be unavailable. On failure, browse with
+    bitbucket_list_files instead.
 
     Args:
         ctx: The FastMCP context.
@@ -1406,8 +1407,9 @@ async def search_code(
         limit: Maximum number of file hits.
 
     Returns:
-        JSON with ``values`` (project_key, repo_slug, path, hit_count, matches
-        with line numbers) and paging fields.
+        JSON with ``values`` (project_key, repo_slug, path, hit_count,
+        ``matches``: lines around each hit, hit lines flagged ``match``;
+        ``path_match`` when the file name matched), ``total`` and paging.
     """
     fetcher = await get_bitbucket_fetcher(ctx)
     return _to_json(

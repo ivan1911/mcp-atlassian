@@ -2,7 +2,8 @@
 
 Bitbucket Data Center has no public REST API for code search
 (BSERV-11632); its UI uses ``POST /rest/search/latest/search``, which needs a
-configured search server and may change between versions.
+configured search server and may change between versions. Only default
+branches are indexed.
 """
 
 import html
@@ -50,7 +51,9 @@ class SearchMixin(BitbucketClient):
             limit: Maximum number of file hits.
 
         Returns:
-            ``values`` (one entry per file with matching lines) and paging.
+            ``values`` (one entry per file: lines around the hits, with hit
+            lines flagged ``match``, and ``path_match`` when the file name
+            matched), ``total`` files with hits, and paging.
 
         Raises:
             ValueError: If search is unavailable, or ``repo_slug`` is given
@@ -64,8 +67,10 @@ class SearchMixin(BitbucketClient):
             terms.append(f"project:{self._project_key(project_key)}")
             if repo_slug:
                 terms.append(f"repo:{repo_slug.strip()}")
-        elif allowed is not None and len(allowed) == 1:
-            terms.append(f"project:{next(iter(allowed))}")
+        elif allowed is not None:
+            # Bare project: terms are ANDed; OR inside parentheses spans them.
+            scope = " OR ".join(f"project:{key}" for key in sorted(allowed))
+            terms.append(f"({scope})" if len(allowed) > 1 else scope)
 
         body = {
             "query": " ".join(terms),
@@ -88,25 +93,35 @@ class SearchMixin(BitbucketClient):
             hit_project = (repository.get("project") or {}).get("key")
             if not self._is_project_allowed(hit_project):
                 continue
-            matches = [
-                {"line": line.get("line"), "text": _plain(str(line.get("text", "")))}
-                for context in file_hit.get("hitContexts") or []
-                for line in context
-            ]
-            values.append(
-                {
-                    "project_key": hit_project,
-                    "repo_slug": repository.get("slug"),
-                    "path": file_hit.get("file"),
-                    "hit_count": file_hit.get("hitCount"),
-                    "matches": matches,
-                }
-            )
+            matches = []
+            for context in file_hit.get("hitContexts") or []:
+                for line in context:
+                    text = str(line.get("text", ""))
+                    match: dict[str, Any] = {
+                        "line": line.get("line"),
+                        "text": _plain(text),
+                    }
+                    # Context lines come without highlighting; flag real hits.
+                    if "<em>" in text:
+                        match["match"] = True
+                    matches.append(match)
+            entry: dict[str, Any] = {
+                "project_key": hit_project,
+                "repo_slug": repository.get("slug"),
+                "path": file_hit.get("file"),
+                "hit_count": file_hit.get("hitCount"),
+            }
+            if any(p.get("match") for p in file_hit.get("pathMatches") or []):
+                entry["path_match"] = True
+            entry["matches"] = matches
+            values.append(entry)
         result: dict[str, Any] = {
             "values": values,
             "start": code.get("start", start),
             "is_last_page": bool(code.get("isLastPage", True)),
         }
+        if code.get("count") is not None:
+            result["total"] = code["count"]
         if not result["is_last_page"] and code.get("nextStart") is not None:
             result["next_page_start"] = code["nextStart"]
         return result
