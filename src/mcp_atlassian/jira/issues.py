@@ -2117,7 +2117,10 @@ class IssuesMixin(
             raise
 
     def _get_changelogs_per_issue(
-        self, issue_ids_or_keys: list[str], fields: list[str] | None
+        self,
+        issue_ids_or_keys: list[str],
+        fields: list[str] | None,
+        errors: dict[str, str] | None = None,
     ) -> list[JiraIssue]:
         """Read changelogs issue by issue (Server/Data Center).
 
@@ -2125,6 +2128,9 @@ class IssuesMixin(
             issue_ids_or_keys: List of issue IDs or keys.
             fields: Keep only changes to these fields (matched case-insensitively
                 against the item's field id or name); None keeps all.
+            errors: If given, issues that cannot be read (missing, forbidden)
+                are skipped and recorded here as ``{key: message}``; otherwise
+                the first such error is raised.
 
         Returns:
             List of JiraIssue objects that only contain changelogs and id.
@@ -2132,9 +2138,16 @@ class IssuesMixin(
         wanted = {f.lower() for f in fields} if fields else None
         issues: list[JiraIssue] = []
         for issue_id_or_key in issue_ids_or_keys:
-            data = self.jira.get_issue(
-                issue_id_or_key, fields="none", expand="changelog"
-            )
+            try:
+                data = self.jira.get_issue(
+                    issue_id_or_key, fields="none", expand="changelog"
+                )
+            except HTTPError as e:
+                if errors is None:
+                    raise
+                logger.warning(f"Skipping changelog of {issue_id_or_key}: {e}")
+                errors[issue_id_or_key] = str(e) or type(e).__name__
+                continue
             if not isinstance(data, dict):
                 continue
             changelog = data.get("changelog") or {}
@@ -2165,7 +2178,10 @@ class IssuesMixin(
         return issues
 
     def batch_get_changelogs(
-        self, issue_ids_or_keys: list[str], fields: list[str] | None = None
+        self,
+        issue_ids_or_keys: list[str],
+        fields: list[str] | None = None,
+        errors: dict[str, str] | None = None,
     ) -> list[JiraIssue]:
         """
         Get changelogs for multiple issues in a batch. Repeatly fetch data if necessary.
@@ -2176,13 +2192,15 @@ class IssuesMixin(
         Args:
             issue_ids_or_keys: List of issue IDs or keys
             fields: Filter the changelogs by fields, e.g. ['status', 'assignee']. Default to None for all fields.
+            errors: Server/DC only: if given, unreadable issues are skipped and
+                recorded here as ``{key: message}`` instead of failing the batch.
 
         Returns:
             List of JiraIssue objects that only contain changelogs and id
         """
 
         if not self.config.is_cloud:
-            return self._get_changelogs_per_issue(issue_ids_or_keys, fields)
+            return self._get_changelogs_per_issue(issue_ids_or_keys, fields, errors)
 
         # Get paged api results
         paged_api_results = self.get_paged(

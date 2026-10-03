@@ -2112,6 +2112,27 @@ class TestIssuesMixin:
             assert call.args[0] == key
             assert call.kwargs["expand"] == "changelog"
 
+    def test_batch_get_changelogs_server_dc_skips_unreadable_issues(
+        self, issues_mixin: IssuesMixin
+    ):
+        """A missing or forbidden issue is reported, the others still return."""
+        issues_mixin.config = MagicMock()
+        issues_mixin.config.is_cloud = False
+        issues_mixin.jira.get_issue.side_effect = [
+            HTTPError("Issue Does Not Exist"),
+            self._dc_issue_with_changelog(
+                "102", [self._dc_history("1", ("status", "Open", "Done"))]
+            ),
+        ]
+        errors: dict[str, str] = {}
+
+        result = issues_mixin.batch_get_changelogs(
+            issue_ids_or_keys=["TEST-404", "TEST-102"], errors=errors
+        )
+
+        assert [issue.id for issue in result] == ["102"]
+        assert errors == {"TEST-404": "Issue Does Not Exist"}
+
     def test_batch_get_changelogs_server_dc_filters_fields(
         self, issues_mixin: IssuesMixin
     ):

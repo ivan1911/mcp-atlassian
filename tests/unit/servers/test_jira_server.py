@@ -5127,3 +5127,28 @@ async def test_jira_analysis_tools_return_structured_errors(
 
     assert content["success"] is False
     assert content["error"] == "service unavailable"
+
+
+@pytest.mark.anyio
+async def test_batch_get_changelogs_reports_skipped_issues(
+    jira_client, mock_jira_fetcher
+):
+    """Issues that could not be read are listed with their error."""
+    from mcp_atlassian.models.jira import JiraIssue
+
+    def fake_batch(issue_ids_or_keys, fields=None, errors=None):
+        errors["TEST-404"] = "Issue Does Not Exist"
+        return [JiraIssue(id="102", changelogs=[])]
+
+    mock_jira_fetcher.batch_get_changelogs.side_effect = fake_batch
+    mock_jira_fetcher.config.is_cloud = False
+
+    response = await jira_client.call_tool(
+        "jira_batch_get_changelogs", {"issue_ids_or_keys": "TEST-404,TEST-102"}
+    )
+
+    content = json.loads(response.content[0].text)
+    assert content == [
+        {"issue_id": "102", "changelogs": []},
+        {"issue_id": "TEST-404", "error": "Issue Does Not Exist"},
+    ]
