@@ -199,4 +199,21 @@ def get_available_services(
             "Jira is not configured or required environment variables are missing."
         )
 
-    return {"confluence": confluence_is_setup, "jira": jira_is_setup}
+    # Bitbucket Data Center: environment PAT only (no OAuth, no header auth).
+    bitbucket_is_setup = bool(
+        os.getenv("BITBUCKET_URL", "").strip()
+        and os.getenv("BITBUCKET_PERSONAL_TOKEN", "").strip()
+    )
+    if bitbucket_is_setup:
+        logger.info("Using Bitbucket Data Center personal token authentication")
+    else:
+        logger.info(
+            "Bitbucket is not configured "
+            "(set BITBUCKET_URL and BITBUCKET_PERSONAL_TOKEN to enable it)."
+        )
+
+    return {
+        "confluence": confluence_is_setup,
+        "jira": jira_is_setup,
+        "bitbucket": bitbucket_is_setup,
+    }

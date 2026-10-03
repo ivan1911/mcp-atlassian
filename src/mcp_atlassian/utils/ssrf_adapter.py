@@ -11,8 +11,9 @@ exactly once, rejects any candidate address that is not globally routable
 address — there is no separate re-resolution to rebind. The original hostname is
 preserved for TLS SNI and certificate verification, so HTTPS is unaffected.
 
-Operator-trusted hosts — the configured ``JIRA_URL`` / ``CONFLUENCE_URL`` hosts
-and ``MCP_ALLOWED_URL_DOMAINS`` entries — are exempt from the non-global
+Operator-trusted hosts — the configured ``JIRA_URL`` / ``CONFLUENCE_URL`` /
+``BITBUCKET_URL`` hosts and ``MCP_ALLOWED_URL_DOMAINS`` entries — are exempt
+from the non-global
 rejection (on-prem DC instances legitimately live on private networks or
 localhost). Those values come from the server environment, which an attacker
 cannot influence through a request, so the rebinding guard is not weakened for
@@ -38,7 +39,7 @@ from .urls import _check_ip_address, _get_domain_allowlist, _hostname_matches_al
 def _operator_trusted_hosts() -> list[str]:
     """Hosts the operator explicitly configured or allowlisted via environment."""
     hosts = []
-    for env in ("JIRA_URL", "CONFLUENCE_URL"):
+    for env in ("JIRA_URL", "CONFLUENCE_URL", "BITBUCKET_URL"):
         raw = os.environ.get(env, "").strip()
         if raw:
             hostname = urlparse(raw).hostname

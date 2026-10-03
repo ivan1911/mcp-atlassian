@@ -1,0 +1,347 @@
+---
+title: "Bitbucket Pull Requests"
+description: "Find, read, review, and manage pull requests: diffs, activity, comments, tasks, reviewer status, merges, and branches"
+---
+
+### List Pull Requests
+
+List pull requests of a repository, filtered by state, people and text.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `state` | `string` | No | Pull request state. |
+| `direction` | `string` | No | INCOMING: pull requests into this repository; OUTGOING: from it. |
+| `target_branch` | `string` | No | (Optional) Only pull requests into this branch (from it when direction is OUTGOING). |
+| `author` | `string` | No | (Optional) Author user slug. |
+| `reviewer` | `string` | No | (Optional) Reviewer user slug. |
+| `text` | `string` | No | (Optional) Text contained in the title or description. |
+| `start` | `integer` | No | Index of the first item to return. Pass next_page_start from a previous response to get the next page. |
+| `limit` | `integer` | No | Maximum number of items (1-100) |
+
+---
+
+### Get My Pull Requests
+
+List my pull requests across repositories (the Bitbucket dashboard).
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `role` | `string` | No | (Optional) Only pull requests where I have this role. |
+| `state` | `string` | No | Pull request state. |
+| `participant_status` | `string` | No | (Optional) Only pull requests where my reviewer status is this. |
+| `start` | `integer` | No | Index of the first item to return. Pass next_page_start from a previous response to get the next page. |
+| `limit` | `integer` | No | Maximum number of items (1-100) |
+
+---
+
+### Get Pull Request
+
+Get a pull request: description, branches, author, reviewers, version.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `include_merge_status` | `boolean` | No | Also check whether it can be merged and what blocks it (conflicts, vetoes such as missing approvals or open tasks). |
+
+---
+
+### Get Pull Request Changes
+
+List the files a pull request changes, with their change type.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `start` | `integer` | No | Index of the first item to return. Pass next_page_start from a previous response to get the next page. |
+| `limit` | `integer` | No | Maximum number of files (1-500) |
+
+---
+
+### Get Pull Request Commits
+
+List the commits of a pull request, newest first.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `start` | `integer` | No | Index of the first item to return. Pass next_page_start from a previous response to get the next page. |
+| `limit` | `integer` | No | Maximum number of items (1-100) |
+
+---
+
+### Get Pull Request Diff
+
+Get a pull request's change as unified diff text, whole or per file.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `path` | `string` | No | (Optional) Only the diff of this file. Use it when the full diff is truncated. |
+| `context_lines` | `integer` | No | (Optional) Lines of context around each change (0-100). |
+| `ignore_whitespace` | `boolean` | No | Ignore whitespace-only changes. |
+
+---
+
+### Get Pull Request Activity
+
+Get pull request activity: comment threads, tasks, approvals, updates.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `start` | `integer` | No | Index of the first item to return. Pass next_page_start from a previous response to get the next page. |
+| `limit` | `integer` | No | Maximum number of items (1-100) |
+
+---
+
+### Add Pull Request Comment
+
+Comment on a pull request: general, inline, reply, task or pending comment.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `text` | `string` | Yes | Comment text in Bitbucket markdown. |
+| `path` | `string` | No | (Optional) File path. Alone it anchors the comment to the whole file; with 'line' and 'line_type' it makes an inline comment. |
+| `line` | `integer` | No | (Optional) Line number in the diff for an inline comment: the new-file line for ADDED/CONTEXT lines, the old-file line for REMOVED lines (see the hunk headers of the pull request diff). |
+| `line_type` | `string` | No | Kind of the commented diff line; required with 'line'. ADDED ('+'), REMOVED ('-') or CONTEXT (' '). |
+| `file_type` | `string` | No | (Optional) Diff side: FROM (old) or TO (new). Inferred from line_type when omitted. |
+| `parent_comment_id` | `integer` | No | (Optional) Reply to this comment id. |
+| `as_task` | `boolean` | No | Create a task: a blocking comment that must be resolved. |
+| `pending` | `boolean` | No | Create a pending comment, visible only to you until you publish the review with bitbucket_publish_review. |
+
+---
+
+### Update Pull Request Comment
+
+Edit a pull request comment's text, or resolve / reopen a task.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `comment_id` | `integer` | Yes | Comment or task id. |
+| `text` | `string` | No | (Optional) New comment text. |
+| `task_state` | `string` | No | (Optional) For a task: 'resolved' or 'open' (reopen). |
+
+---
+
+### Set Reviewer Status
+
+Set my reviewer status on a pull request: approved, needs_work, unapproved.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `status` | `string` | Yes | Reviewer status to set. |
+| `version` | `integer` | No | (Optional) Pull request version from bitbucket_get_pull_request. Pass it to have the change refused if the pull request changed since you read it; omit it to use the current version. |
+
+---
+
+### Publish Review
+
+Publish my pending comments on a pull request as one review.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `status` | `string` | No | (Optional) Reviewer status to set when publishing. |
+| `comment` | `string` | No | (Optional) Summary comment for the review. |
+
+---
+
+### Create Pull Request
+
+Create a pull request from a source branch to a target branch.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `title` | `string` | Yes | Pull request title. |
+| `source_branch` | `string` | Yes | Branch with the changes, e.g. 'feature/login'. |
+| `target_branch` | `string` | No | (Optional) Branch to merge into. Defaults to the repository's default branch. |
+| `description` | `string` | No | (Optional) Description in markdown. |
+| `reviewers` | `array` | No | (Optional) Reviewer usernames. When omitted, the repository's default reviewers for this branch pair are added. |
+| `draft` | `boolean` | No | Create as a draft pull request. |
+
+---
+
+### Update Pull Request
+
+Update a pull request's title, description, reviewers, target or draft flag.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `title` | `string` | No | (Optional) New title. |
+| `description` | `string` | No | (Optional) New description. |
+| `reviewers` | `array` | No | (Optional) Full new list of reviewer usernames (replaces the current reviewers). Omit to keep them. |
+| `target_branch` | `string` | No | (Optional) New target branch. |
+| `draft` | `boolean` | No | (Optional) Set or clear the draft flag. |
+| `version` | `integer` | No | (Optional) Pull request version from bitbucket_get_pull_request. Pass it to have the change refused if the pull request changed since you read it; omit it to use the current version. |
+
+---
+
+### Merge Pull Request
+
+Merge a pull request. If Bitbucket refuses, the error lists why.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `strategy` | `string` | No | (Optional) Merge strategy id configured for the repository, e.g. 'no-ff', 'ff', 'ff-only', 'squash', 'squash-ff-only', 'rebase-no-ff', 'rebase-ff-only'. Defaults to the repository's. |
+| `message` | `string` | No | (Optional) Text for the merge commit body. Bitbucket keeps its own subject line ('Merge pull request #N ...') and puts this text below it. |
+| `version` | `integer` | No | (Optional) Pull request version from bitbucket_get_pull_request. Pass it to have the change refused if the pull request changed since you read it; omit it to use the current version. |
+
+---
+
+### Decline Pull Request
+
+Decline a pull request (it can be reopened later).
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `comment` | `string` | No | (Optional) Reason, added as a comment. |
+| `version` | `integer` | No | (Optional) Pull request version from bitbucket_get_pull_request. Pass it to have the change refused if the pull request changed since you read it; omit it to use the current version. |
+
+---
+
+### Reopen Pull Request
+
+Reopen a declined pull request.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `version` | `integer` | No | (Optional) Pull request version from bitbucket_get_pull_request. Pass it to have the change refused if the pull request changed since you read it; omit it to use the current version. |
+
+---
+
+### Create Branch
+
+Create a branch from a branch, tag or commit.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `name` | `string` | Yes | New branch name, e.g. 'fix/login'. |
+| `start_point` | `string` | Yes | Branch, tag or commit hash to create the branch from. |
+
+---
+
+### Delete Pull Request
+
+Permanently delete a pull request. Prefer declining when unsure.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `version` | `integer` | No | (Optional) Pull request version from bitbucket_get_pull_request. Pass it to have the change refused if the pull request changed since you read it; omit it to use the current version. |
+
+---
+
+### Delete Branch
+
+Delete a branch.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `name` | `string` | Yes | Branch name or fully qualified ref to delete. |
+
+---

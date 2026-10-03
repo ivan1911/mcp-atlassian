@@ -1381,7 +1381,12 @@ class TestMCPProtocolIntegration:
                     app = MagicMock()
                     async with main_lifespan(app) as context:
                         app_context = context["app_lifespan_context"]
-                        assert app_context.enabled_toolsets == set(ALL_TOOLSETS.keys())
+                        # explicit_only toolsets must be named; never implicit.
+                        assert app_context.enabled_toolsets == {
+                            name
+                            for name, definition in ALL_TOOLSETS.items()
+                            if not definition.explicit_only
+                        }
 
     async def test_lifespan_with_toolsets(self):
         """Test lifespan parses TOOLSETS env var into MainAppContext.enabled_toolsets."""

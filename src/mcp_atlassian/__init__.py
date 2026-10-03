@@ -195,6 +195,23 @@ async def _run_stdio_with_stdin_guard(run_kwargs: dict[str, object]) -> None:
     help="Comma-separated list of Jira project keys to filter search results",
 )
 @click.option(
+    "--bitbucket-url",
+    help="Bitbucket Data Center URL (e.g., https://bitbucket.your-company.com)",
+)
+@click.option(
+    "--bitbucket-personal-token",
+    help="Bitbucket Data Center HTTP access token",
+)
+@click.option(
+    "--bitbucket-ssl-verify/--no-bitbucket-ssl-verify",
+    default=True,
+    help="Verify SSL certificates for Bitbucket Data Center (default: verify)",
+)
+@click.option(
+    "--bitbucket-projects-filter",
+    help="Comma-separated list of Bitbucket project keys the tools may access",
+)
+@click.option(
     "--read-only",
     is_flag=True,
     help="Run in read-only mode (disables all write operations)",
@@ -253,6 +270,10 @@ def main(
     jira_personal_token: str | None,
     jira_ssl_verify: bool,
     jira_projects_filter: str | None,
+    bitbucket_url: str | None,
+    bitbucket_personal_token: str | None,
+    bitbucket_ssl_verify: bool,
+    bitbucket_projects_filter: str | None,
     read_only: bool,
     enabled_tools: str | None,
     toolsets: str | None,
@@ -263,9 +284,10 @@ def main(
     oauth_cloud_id: str | None,
     oauth_access_token: str | None,
 ) -> None:
-    """MCP Atlassian Server - Jira and Confluence functionality for MCP
+    """MCP Atlassian Server - Jira, Confluence and Bitbucket functionality for MCP
 
-    Supports both Atlassian Cloud and Jira Server/Data Center deployments.
+    Supports both Atlassian Cloud and Jira Server/Data Center deployments, plus
+    Bitbucket Data Center (personal access token only).
     Authentication methods supported:
     - Username and API token (Cloud and Server/Data Center)
     - Personal Access Token (Server/Data Center)
@@ -413,6 +435,14 @@ def main(
         os.environ["JIRA_SSL_VERIFY"] = str(jira_ssl_verify).lower()
     if click_ctx and was_option_provided(click_ctx, "jira_projects_filter"):
         os.environ["JIRA_PROJECTS_FILTER"] = jira_projects_filter
+    if click_ctx and was_option_provided(click_ctx, "bitbucket_url"):
+        os.environ["BITBUCKET_URL"] = bitbucket_url
+    if click_ctx and was_option_provided(click_ctx, "bitbucket_personal_token"):
+        os.environ["BITBUCKET_PERSONAL_TOKEN"] = bitbucket_personal_token
+    if click_ctx and was_option_provided(click_ctx, "bitbucket_ssl_verify"):
+        os.environ["BITBUCKET_SSL_VERIFY"] = str(bitbucket_ssl_verify).lower()
+    if click_ctx and was_option_provided(click_ctx, "bitbucket_projects_filter"):
+        os.environ["BITBUCKET_PROJECTS_FILTER"] = bitbucket_projects_filter
 
     from mcp_atlassian.servers import main_mcp
 

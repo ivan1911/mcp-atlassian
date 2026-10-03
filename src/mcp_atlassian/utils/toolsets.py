@@ -1,6 +1,6 @@
 """Toolset definitions and filtering utilities for MCP Atlassian.
 
-Groups 98 tools into 25 named toolsets controlled via the TOOLSETS env var.
+Groups the MCP tools into named toolsets controlled via the TOOLSETS env var.
 Supports 'all', 'default', and comma-separated toolset names.
 """
 
@@ -20,6 +20,8 @@ class ToolsetDefinition:
     name: str
     description: str
     default: bool
+    # Enabled only when named in TOOLSETS; never via unset/empty/'all'/'default'.
+    explicit_only: bool = False
 
 
 # --- Jira toolsets (16) ---
@@ -152,11 +154,53 @@ CONFLUENCE_TOOLSETS: dict[str, ToolsetDefinition] = {
     ),
 }
 
+# --- Bitbucket Data Center toolsets ---
+
+BITBUCKET_TOOLSETS: dict[str, ToolsetDefinition] = {
+    "bitbucket_projects": ToolsetDefinition(
+        name="bitbucket_projects",
+        description="Bitbucket projects and repositories",
+        default=True,
+    ),
+    "bitbucket_code": ToolsetDefinition(
+        name="bitbucket_code",
+        description="Bitbucket files, branches, tags, commits and commit diffs",
+        default=True,
+    ),
+    "bitbucket_pull_requests": ToolsetDefinition(
+        name="bitbucket_pull_requests",
+        description="Find and read Bitbucket pull requests, diffs and activity",
+        default=True,
+    ),
+    "bitbucket_pr_review": ToolsetDefinition(
+        name="bitbucket_pr_review",
+        description="Review Bitbucket pull requests: comments, tasks, reviewer status",
+        default=True,
+    ),
+    "bitbucket_pr_manage": ToolsetDefinition(
+        name="bitbucket_pr_manage",
+        description="Create, update, merge, decline, reopen pull requests; branches",
+        default=True,
+    ),
+    "bitbucket_search": ToolsetDefinition(
+        name="bitbucket_search",
+        description="Bitbucket code search (unofficial endpoint, opt-in)",
+        default=False,
+    ),
+    "bitbucket_destructive": ToolsetDefinition(
+        name="bitbucket_destructive",
+        description="Delete Bitbucket pull requests and branches (named opt-in only)",
+        default=False,
+        explicit_only=True,
+    ),
+}
+
 # --- Combined registry ---
 
 ALL_TOOLSETS: dict[str, ToolsetDefinition] = {
     **JIRA_TOOLSETS,
     **CONFLUENCE_TOOLSETS,
+    **BITBUCKET_TOOLSETS,
     "legacy": ToolsetDefinition(
         name="legacy",
         description="Deprecated tools retained for migration compatibility",
@@ -165,19 +209,38 @@ ALL_TOOLSETS: dict[str, ToolsetDefinition] = {
 }
 
 DEFAULT_TOOLSETS: set[str] = {
-    name for name, defn in ALL_TOOLSETS.items() if defn.default
+    name
+    for name, defn in ALL_TOOLSETS.items()
+    if defn.default and not defn.explicit_only
 }
+
+
+def _implicit_toolsets() -> set[str]:
+    """Return every toolset that 'all' (or an unset TOOLSETS) enables."""
+    return {name for name, defn in ALL_TOOLSETS.items() if not defn.explicit_only}
+
+
+def _warn_default_will_change() -> None:
+    logger.warning(
+        "TOOLSETS is not set — currently defaults to all toolsets. "
+        f"In v0.22.0, the default will change to {len(DEFAULT_TOOLSETS)} core "
+        "toolsets only. Set TOOLSETS=all explicitly to preserve current behavior."
+    )
 
 
 def get_enabled_toolsets() -> set[str]:
     """Parse the TOOLSETS env var into a set of enabled toolset names.
 
-    Supports keywords 'all' (all 25 toolsets) and 'default' (6 defaults),
-    plus comma-separated specific toolset names. Case-insensitive for keywords.
+    Supports keywords 'all' (every toolset not marked ``explicit_only``) and
+    'default' (DEFAULT_TOOLSETS), plus comma-separated specific toolset names.
+    Case-insensitive for keywords.
 
     When TOOLSETS is unset or empty, returns all toolsets with a deprecation
-    warning. In v0.22.0 the default will change to DEFAULT_TOOLSETS (6 core).
+    warning. In v0.22.0 the default will change to DEFAULT_TOOLSETS.
     Set ``TOOLSETS=all`` explicitly to preserve current behavior.
+
+    Toolsets marked ``explicit_only`` are never enabled by an unset TOOLSETS,
+    'all' or 'default'; they must be named, e.g. ``TOOLSETS=all,<name>``.
 
     Returns:
         A set of valid toolset names. Defaults to all toolsets when unset.
@@ -185,22 +248,18 @@ def get_enabled_toolsets() -> set[str]:
         names are given, returns an empty set (fail-closed).
 
     Examples:
-        TOOLSETS unset -> all 25 toolsets (with deprecation warning)
-        TOOLSETS="" -> all 25 toolsets (with deprecation warning)
-        TOOLSETS="all" -> all 25 names
-        TOOLSETS="default" -> 6 default names
+        TOOLSETS unset -> all toolsets (with deprecation warning)
+        TOOLSETS="" -> all toolsets (with deprecation warning)
+        TOOLSETS="all" -> all toolset names
+        TOOLSETS="default" -> DEFAULT_TOOLSETS
         TOOLSETS="default,jira_agile" -> defaults + jira_agile
         TOOLSETS="typo_name" -> set() (fail-closed)
     """
     toolsets_str = os.getenv("TOOLSETS")
     if not toolsets_str:
         logger.info("TOOLSETS not set — all toolsets enabled.")
-        logger.warning(
-            "TOOLSETS is not set — currently defaults to all toolsets. "
-            "In v0.22.0, the default will change to 6 core toolsets only. "
-            "Set TOOLSETS=all explicitly to preserve current behavior."
-        )
-        return set(ALL_TOOLSETS.keys())
+        _warn_default_will_change()
+        return _implicit_toolsets()
 
     # Split by comma and strip whitespace, filter empty tokens
     tokens = [t.strip() for t in toolsets_str.split(",")]
@@ -208,12 +267,8 @@ def get_enabled_toolsets() -> set[str]:
 
     if not tokens:
         logger.info("TOOLSETS empty — all toolsets enabled.")
-        logger.warning(
-            "TOOLSETS is not set — currently defaults to all toolsets. "
-            "In v0.22.0, the default will change to 6 core toolsets only. "
-            "Set TOOLSETS=all explicitly to preserve current behavior."
-        )
-        return set(ALL_TOOLSETS.keys())
+        _warn_default_will_change()
+        return _implicit_toolsets()
 
     result: set[str] = set()
 
@@ -221,7 +276,7 @@ def get_enabled_toolsets() -> set[str]:
         normalized = token.lower()
         if normalized == "all":
             logger.info("TOOLSETS: 'all' keyword — enabling all toolsets.")
-            return set(ALL_TOOLSETS.keys())
+            result |= _implicit_toolsets()
         elif normalized == "default":
             logger.info("TOOLSETS: 'default' keyword — adding default toolsets.")
             result |= DEFAULT_TOOLSETS

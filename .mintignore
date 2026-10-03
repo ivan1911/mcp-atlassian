@@ -15,3 +15,7 @@ scripts/
 docs/_overrides/
 .github/
 .claude/
+
+# Ignore agent-facing docs (skill config, ADRs)
+docs/agents/
+docs/adr/

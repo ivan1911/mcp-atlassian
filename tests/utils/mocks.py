@@ -90,6 +90,8 @@ class MockEnvironment:
             "CONFLUENCE_CLIENT_CERT",
             "CONFLUENCE_CLIENT_KEY",
             "CONFLUENCE_CLIENT_KEY_PASSWORD",
+            "BITBUCKET_URL",
+            "BITBUCKET_PERSONAL_TOKEN",
             "ATLASSIAN_OAUTH_CLIENT_ID",
             "ATLASSIAN_OAUTH_CLIENT_SECRET",
             "ATLASSIAN_OAUTH_REDIRECT_URI",

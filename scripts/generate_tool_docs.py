@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Generate MDX documentation for all MCP tools.
 
-Introspects the FastMCP server instances (jira_mcp, confluence_mcp) to extract
+Introspects the FastMCP server instances (jira_mcp, confluence_mcp,
+bitbucket_mcp) to extract
 tool metadata, then renders per-category MDX pages via a Jinja2 template.
 
 Usage:
@@ -156,6 +157,40 @@ CATEGORY_TOOLS: dict[str, list[str]] = {
         "confluence_get_page_template",
         "confluence_create_page_from_template",
     ],
+    "bitbucket-code": [
+        "bitbucket_list_projects",
+        "bitbucket_list_repositories",
+        "bitbucket_get_repository",
+        "bitbucket_list_files",
+        "bitbucket_get_file_content",
+        "bitbucket_list_branches",
+        "bitbucket_list_tags",
+        "bitbucket_list_commits",
+        "bitbucket_get_commit",
+        "bitbucket_get_commit_diff",
+        "bitbucket_search_code",
+    ],
+    "bitbucket-pull-requests": [
+        "bitbucket_list_pull_requests",
+        "bitbucket_get_my_pull_requests",
+        "bitbucket_get_pull_request",
+        "bitbucket_get_pull_request_changes",
+        "bitbucket_get_pull_request_commits",
+        "bitbucket_get_pull_request_diff",
+        "bitbucket_get_pull_request_activity",
+        "bitbucket_add_pull_request_comment",
+        "bitbucket_update_pull_request_comment",
+        "bitbucket_set_reviewer_status",
+        "bitbucket_publish_review",
+        "bitbucket_create_pull_request",
+        "bitbucket_update_pull_request",
+        "bitbucket_merge_pull_request",
+        "bitbucket_decline_pull_request",
+        "bitbucket_reopen_pull_request",
+        "bitbucket_create_branch",
+        "bitbucket_delete_pull_request",
+        "bitbucket_delete_branch",
+    ],
 }
 
 CATEGORY_META: dict[str, dict[str, str]] = {
@@ -217,6 +252,19 @@ CATEGORY_META: dict[str, dict[str, str]] = {
     "confluence-templates": {
         "title": "Confluence Templates",
         "description": "List page templates and create pages from them",
+    },
+    "bitbucket-code": {
+        "title": "Bitbucket Projects & Code",
+        "description": (
+            "Projects, repositories, files, branches, commits, and code search"
+        ),
+    },
+    "bitbucket-pull-requests": {
+        "title": "Bitbucket Pull Requests",
+        "description": (
+            "Find, read, review, and manage pull requests: diffs, activity, "
+            "comments, tasks, reviewer status, merges, and branches"
+        ),
     },
 }
 
@@ -286,6 +334,12 @@ class ToolCounts:
     jira_toolsets: int
     confluence_toolsets: int
     core_toolsets: int
+    bitbucket_tools: int = 0
+    bitbucket_toolsets: int = 0
+    # Tools/toolsets that 'all' or an unset TOOLSETS enables: explicit_only
+    # toolsets (e.g. bitbucket_destructive) must be named and are excluded.
+    implicit_tools: int = 0
+    implicit_toolsets: int = 0
 
 
 @dataclass
@@ -351,40 +405,34 @@ def _make_display_name(tool_name: str, annotations: Any) -> str:
     # Fallback: jira_get_issue -> Get Issue
     parts = tool_name.split("_")
     # Drop service prefix
-    if parts and parts[0] in ("jira", "confluence"):
+    if parts and parts[0] in ("jira", "confluence", "bitbucket"):
         parts = parts[1:]
     return " ".join(p.capitalize() for p in parts)
 
 
 async def get_all_tools() -> dict[str, dict[str, Any]]:
-    """Extract tools from both FastMCP server instances."""
+    """Extract tools from all service FastMCP server instances."""
+    from mcp_atlassian.servers.bitbucket import bitbucket_mcp
     from mcp_atlassian.servers.confluence import confluence_mcp
     from mcp_atlassian.servers.jira import jira_mcp
 
-    jira_tools = await jira_mcp.list_tools()
-    confluence_tools = await confluence_mcp.list_tools()
-
     all_tools: dict[str, dict[str, Any]] = {}
 
-    for tool in jira_tools:
-        prefixed = f"jira_{tool.name}"
-        mcp_tool = tool.to_mcp_tool(name=prefixed)
-        all_tools[prefixed] = {
-            "mcp_tool": mcp_tool,
-            "tags": tool.tags if hasattr(tool, "tags") else set(),
-            "annotations": getattr(tool, "annotations", None),
-            "is_write": "write" in (tool.tags if hasattr(tool, "tags") else set()),
-        }
-
-    for tool in confluence_tools:
-        prefixed = f"confluence_{tool.name}"
-        mcp_tool = tool.to_mcp_tool(name=prefixed)
-        all_tools[prefixed] = {
-            "mcp_tool": mcp_tool,
-            "tags": tool.tags if hasattr(tool, "tags") else set(),
-            "annotations": getattr(tool, "annotations", None),
-            "is_write": "write" in (tool.tags if hasattr(tool, "tags") else set()),
-        }
+    for prefix, server in (
+        ("jira", jira_mcp),
+        ("confluence", confluence_mcp),
+        ("bitbucket", bitbucket_mcp),
+    ):
+        for tool in await server.list_tools():
+            prefixed = f"{prefix}_{tool.name}"
+            mcp_tool = tool.to_mcp_tool(name=prefixed)
+            tags = tool.tags if hasattr(tool, "tags") else set()
+            all_tools[prefixed] = {
+                "mcp_tool": mcp_tool,
+                "tags": tags,
+                "annotations": getattr(tool, "annotations", None),
+                "is_write": "write" in tags,
+            }
 
     return all_tools
 
@@ -477,6 +525,7 @@ def get_tool_counts(tools: dict[str, dict[str, Any]]) -> ToolCounts:
     """Calculate tool and toolset counts from their live registries."""
     from mcp_atlassian.utils.toolsets import (
         ALL_TOOLSETS,
+        BITBUCKET_TOOLSETS,
         CONFLUENCE_TOOLSETS,
         DEFAULT_TOOLSETS,
         JIRA_TOOLSETS,
@@ -494,6 +543,13 @@ def get_tool_counts(tools: dict[str, dict[str, Any]]) -> ToolCounts:
         jira_toolsets=len(JIRA_TOOLSETS),
         confluence_toolsets=len(CONFLUENCE_TOOLSETS),
         core_toolsets=len(DEFAULT_TOOLSETS),
+        bitbucket_tools=sum(name.startswith("bitbucket_") for name in tools),
+        bitbucket_toolsets=len(BITBUCKET_TOOLSETS),
+        implicit_tools=sum(
+            not ALL_TOOLSETS[get_toolset_tag(info["tags"]) or ""].explicit_only
+            for info in tools.values()
+        ),
+        implicit_toolsets=sum(not d.explicit_only for d in ALL_TOOLSETS.values()),
     )
 
 
@@ -503,6 +559,7 @@ def build_toolset_docs(
     """Group introspected tools by the registered toolset definitions."""
     from mcp_atlassian.utils.toolsets import (
         ALL_TOOLSETS,
+        BITBUCKET_TOOLSETS,
         CONFLUENCE_TOOLSETS,
         DEFAULT_TOOLSETS,
         JIRA_TOOLSETS,
@@ -527,6 +584,7 @@ def build_toolset_docs(
     return {
         "jira": [toolsets_by_name[name] for name in JIRA_TOOLSETS],
         "confluence": [toolsets_by_name[name] for name in CONFLUENCE_TOOLSETS],
+        "bitbucket": [toolsets_by_name[name] for name in BITBUCKET_TOOLSETS],
         "legacy": [toolsets_by_name["legacy"]],
     }
 
@@ -714,12 +772,12 @@ COUNT_RULES = (
     CountRule(
         ".env.example",
         re.compile(r"All (\d+)\s+toolsets? \((\d+)\s+tools?\)", re.IGNORECASE),
-        "total_toolsets",
+        "implicit_toolsets",
     ),
     CountRule(
         ".env.example",
         re.compile(r"All (\d+)\s+toolsets? \((\d+)\s+tools?\)", re.IGNORECASE),
-        "total_tools",
+        "implicit_tools",
         group=2,
     ),
     CountRule(
@@ -728,12 +786,12 @@ COUNT_RULES = (
             r"If unset, all toolsets are enabled \((\d+)\s+tools?\)",
             re.IGNORECASE,
         ),
-        "total_tools",
+        "implicit_tools",
     ),
     CountRule(
         "docs.json",
-        re.compile(r"all (\d+)\s+tools? enabled by default", re.IGNORECASE),
-        "total_tools",
+        re.compile(r"(\d+)\s+tools? enabled by default", re.IGNORECASE),
+        "implicit_tools",
     ),
     CountRule(
         "docs/tools-reference.mdx",
@@ -760,8 +818,13 @@ COUNT_RULES = (
     ),
     CountRule(
         "docs/tools-reference.mdx",
+        re.compile(r"\*\*Bitbucket Toolsets \((\d+)\):\*\*", re.IGNORECASE),
+        "bitbucket_toolsets",
+    ),
+    CountRule(
+        "docs/tools-reference.mdx",
         re.compile(r"Enable all toolsets \((\d+)\s+tools?\)", re.IGNORECASE),
-        "total_tools",
+        "implicit_tools",
     ),
     CountRule(
         "docs/configuration.mdx",
