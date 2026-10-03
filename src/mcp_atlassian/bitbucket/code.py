@@ -215,7 +215,12 @@ class CodeMixin(BitbucketClient):
         return BitbucketPage.from_api_response(data, item_model=BitbucketCommit)
 
     def get_commit(
-        self, project_key: str, repo_slug: str, commit_id: str, *, max_changes: int = 500
+        self,
+        project_key: str,
+        repo_slug: str,
+        commit_id: str,
+        *,
+        max_changes: int = 500,
     ) -> BitbucketCommit:
         """Get a commit with the files it changed.
 

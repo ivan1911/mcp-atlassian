@@ -407,3 +407,67 @@ async def get_commit(
     fetcher = await get_bitbucket_fetcher(ctx)
     commit = fetcher.get_commit(project_key, repo_slug, commit_id)
     return _to_json(commit.to_simplified_dict())
+
+
+DiffPathParam = Annotated[
+    str | None,
+    Field(
+        description=(
+            "(Optional) Only the diff of this file. Use it when the full diff "
+            "is truncated."
+        ),
+        default=None,
+    ),
+]
+ContextLinesParam = Annotated[
+    int | None,
+    Field(
+        description="(Optional) Lines of context around each change (0-100).",
+        default=None,
+        ge=0,
+        le=100,
+    ),
+]
+IgnoreWhitespaceParam = Annotated[
+    bool,
+    Field(description="Ignore whitespace-only changes.", default=False),
+]
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "read", "toolset:bitbucket_code"},
+    annotations={"title": "Get Commit Diff", "readOnlyHint": True},
+)
+async def get_commit_diff(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    commit_id: CommitIdParam,
+    path: DiffPathParam = None,
+    context_lines: ContextLinesParam = None,
+    ignore_whitespace: IgnoreWhitespaceParam = False,
+) -> str:
+    """Get what a commit changed, as unified diff text.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        commit_id: Commit hash.
+        path: Only this file.
+        context_lines: Lines of context around changes.
+        ignore_whitespace: Ignore whitespace-only changes.
+
+    Returns:
+        A ``#`` header line (plus a truncation notice when Bitbucket cut the
+        diff) followed by unified diff text.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    return fetcher.get_commit_diff(
+        project_key,
+        repo_slug,
+        commit_id,
+        path=path,
+        context_lines=context_lines,
+        ignore_whitespace=ignore_whitespace,
+    )

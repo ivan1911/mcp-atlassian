@@ -142,3 +142,20 @@ Get a commit with its message, author, parents and changed files.
 | `commit_id` | `string` | Yes | Commit hash (full or abbreviated). |
 
 ---
+
+### Get Commit Diff
+
+Get what a commit changed, as unified diff text.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `commit_id` | `string` | Yes | Commit hash (full or abbreviated). |
+| `path` | `string` | No | (Optional) Only the diff of this file. Use it when the full diff is truncated. |
+| `context_lines` | `integer` | No | (Optional) Lines of context around each change (0-100). |
+| `ignore_whitespace` | `boolean` | No | Ignore whitespace-only changes. |
+
+---

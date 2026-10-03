@@ -69,9 +69,7 @@ class TestListFiles:
 
 
 class TestGetFileContent:
-    async def test_returns_lines_with_total_and_no_truncation(
-        self, bb, fake_bitbucket
-    ):
+    async def test_returns_lines_with_total_and_no_truncation(self, bb, fake_bitbucket):
         fake_bitbucket.add("GET", f"{REPO}/raw/src/app.py", "import os\nprint(1)\n")
 
         result = await bb.call(
@@ -84,9 +82,7 @@ class TestGetFileContent:
         assert result["end_line"] == 2
         assert result["truncated"] is False
 
-    async def test_reads_a_line_range_and_reports_truncation(
-        self, bb, fake_bitbucket
-    ):
+    async def test_reads_a_line_range_and_reports_truncation(self, bb, fake_bitbucket):
         body = "".join(f"line {n}\n" for n in range(1, 11))
         fake_bitbucket.add("GET", f"{REPO}/raw/big.txt", body)
 
@@ -104,7 +100,9 @@ class TestGetFileContent:
         body = "".join(f"{n}\n" for n in range(1, 1501))
         fake_bitbucket.add("GET", f"{REPO}/raw/huge.txt", body)
 
-        result = await bb.call("bitbucket_get_file_content", **repo_args(path="huge.txt"))
+        result = await bb.call(
+            "bitbucket_get_file_content", **repo_args(path="huge.txt")
+        )
 
         assert result["end_line"] == 1000
         assert result["total_lines"] == 1500
@@ -113,7 +111,9 @@ class TestGetFileContent:
     async def test_binary_file_returns_metadata_only(self, bb, fake_bitbucket):
         fake_bitbucket.add("GET", f"{REPO}/raw/logo.png", b"\x89PNG\r\n\x1a\n\x00\x00")
 
-        result = await bb.call("bitbucket_get_file_content", **repo_args(path="logo.png"))
+        result = await bb.call(
+            "bitbucket_get_file_content", **repo_args(path="logo.png")
+        )
 
         assert result["binary"] is True
         assert result["size_bytes"] == 10

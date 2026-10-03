@@ -292,3 +292,74 @@ def browse_directory(path: str, children: list[tuple[str, str, int | None]]):
         "revision": "main",
         "children": page(values),
     }
+
+
+def hunk(
+    source_line: int,
+    destination_line: int,
+    segments: list[tuple[str, list[str]]],
+    *,
+    truncated: bool = False,
+) -> dict[str, Any]:
+    """Build a diff hunk from ``(type, lines)`` segments.
+
+    Line numbers are assigned like Bitbucket does: CONTEXT advances both
+    sides, REMOVED the source, ADDED the destination.
+    """
+    src, dst = source_line, destination_line
+    built = []
+    for seg_type, lines in segments:
+        seg_lines = []
+        for text in lines:
+            seg_lines.append({"source": src, "destination": dst, "line": text})
+            if seg_type in ("CONTEXT", "REMOVED"):
+                src += 1
+            if seg_type in ("CONTEXT", "ADDED"):
+                dst += 1
+        built.append({"type": seg_type, "lines": seg_lines, "truncated": False})
+    return {
+        "sourceLine": source_line,
+        "sourceSpan": src - source_line,
+        "destinationLine": destination_line,
+        "destinationSpan": dst - destination_line,
+        "segments": built,
+        "truncated": truncated,
+    }
+
+
+def file_diff(
+    source: str | None,
+    destination: str | None,
+    hunks: list[dict[str, Any]] | None = None,
+    *,
+    truncated: bool = False,
+    binary: bool = False,
+) -> dict[str, Any]:
+    """Build one file's diff; ``None`` source/destination means added/deleted."""
+    result: dict[str, Any] = {
+        "source": {"toString": source} if source else None,
+        "destination": {"toString": destination} if destination else None,
+        "hunks": hunks or [],
+        "truncated": truncated,
+    }
+    if binary:
+        result["binary"] = True
+    return result
+
+
+def diff(
+    files: list[dict[str, Any]],
+    *,
+    from_hash: str = "1" * 40,
+    to_hash: str = "2" * 40,
+    truncated: bool = False,
+) -> dict[str, Any]:
+    """Build a Bitbucket JSON diff response."""
+    return {
+        "fromHash": from_hash,
+        "toHash": to_hash,
+        "contextLines": 10,
+        "whitespace": "SHOW",
+        "diffs": files,
+        "truncated": truncated,
+    }

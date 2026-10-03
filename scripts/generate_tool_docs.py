@@ -167,6 +167,7 @@ CATEGORY_TOOLS: dict[str, list[str]] = {
         "bitbucket_list_tags",
         "bitbucket_list_commits",
         "bitbucket_get_commit",
+        "bitbucket_get_commit_diff",
     ],
 }
 
