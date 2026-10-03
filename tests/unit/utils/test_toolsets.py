@@ -35,12 +35,12 @@ class TestGetEnabledToolsets:
         assert result == expected
 
     def test_all_keyword(self, monkeypatch):
-        """Test 'all' keyword returns all 26 toolset names."""
+        """Test 'all' keyword returns all 27 toolset names."""
         monkeypatch.setenv("TOOLSETS", "all")
         result = get_enabled_toolsets()
         assert result is not None
         assert result == set(ALL_TOOLSETS.keys())
-        assert len(result) == 26
+        assert len(result) == 27
 
     def test_all_keyword_case_insensitive(self, monkeypatch):
         """Test 'ALL' keyword is case-insensitive."""
@@ -48,16 +48,16 @@ class TestGetEnabledToolsets:
         result = get_enabled_toolsets()
         assert result is not None
         assert result == set(ALL_TOOLSETS.keys())
-        assert len(result) == 26
+        assert len(result) == 27
 
     def test_default_keyword(self, monkeypatch):
-        """Test 'default' keyword returns 7 default toolset names."""
+        """Test 'default' keyword returns 8 default toolset names."""
         monkeypatch.setenv("TOOLSETS", "default")
         result = get_enabled_toolsets()
         assert result is not None
         assert result == DEFAULT_TOOLSETS
-        # 4 Jira defaults + 2 Confluence defaults + 1 Bitbucket default
-        assert len(result) == 7
+        # 4 Jira defaults + 2 Confluence defaults + 2 Bitbucket defaults
+        assert len(result) == 8
 
     def test_default_plus_extra(self, monkeypatch):
         """Test 'default,jira_agile' returns defaults + jira_agile."""
@@ -96,12 +96,13 @@ class TestGetEnabledToolsets:
             "confluence_pages",
             "confluence_comments",
             "bitbucket_projects",
+            "bitbucket_code",
         }
         assert DEFAULT_TOOLSETS == expected_defaults
 
     def test_all_toolsets_count(self):
-        """Verify ALL_TOOLSETS has exactly 26 entries."""
-        assert len(ALL_TOOLSETS) == 26
+        """Verify ALL_TOOLSETS has exactly 27 entries."""
+        assert len(ALL_TOOLSETS) == 27
 
     def test_all_toolsets_contains_jira_and_confluence(self):
         """Verify ALL_TOOLSETS has both Jira and Confluence toolsets."""

@@ -213,3 +213,82 @@ def branch_ref(name: str, *, latest_commit: str = "a" * 40, default: bool = Fals
         "latestChangeset": latest_commit,
         "isDefault": default,
     }
+
+
+def tag_ref(name: str, *, latest_commit: str = "b" * 40) -> dict[str, Any]:
+    """Build a Bitbucket tag payload."""
+    return {
+        "id": f"refs/tags/{name}",
+        "displayId": name,
+        "type": "TAG",
+        "latestCommit": latest_commit,
+        "latestChangeset": latest_commit,
+        "hash": "c" * 40,
+    }
+
+
+def user(name: str, email: str | None = None) -> dict[str, Any]:
+    """Build a Bitbucket user payload."""
+    return {
+        "name": name,
+        "emailAddress": email or f"{name}@example.com",
+        "displayName": name.title(),
+        "slug": name,
+        "id": abs(hash(name)) % 10_000,
+        "active": True,
+        "type": "NORMAL",
+    }
+
+
+def commit(
+    commit_id: str,
+    message: str = "Fix the thing",
+    *,
+    author: str = "alice",
+    parents: tuple[str, ...] = (),
+    timestamp: int = 1_700_000_000_000,
+) -> dict[str, Any]:
+    """Build a Bitbucket commit payload."""
+    return {
+        "id": commit_id,
+        "displayId": commit_id[:11],
+        "message": message,
+        "author": user(author),
+        "authorTimestamp": timestamp,
+        "committer": user(author),
+        "committerTimestamp": timestamp,
+        "parents": [{"id": p, "displayId": p[:11]} for p in parents],
+    }
+
+
+def change(path: str, change_type: str = "MODIFY", src_path: str | None = None):
+    """Build a Bitbucket change (changed file) payload."""
+    result: dict[str, Any] = {
+        "path": {"toString": path, "name": path.rsplit("/", 1)[-1]},
+        "type": change_type,
+        "nodeType": "FILE",
+    }
+    if src_path:
+        result["srcPath"] = {"toString": src_path}
+    return result
+
+
+def browse_directory(path: str, children: list[tuple[str, str, int | None]]):
+    """Build a ``/browse`` response for a directory.
+
+    ``children`` are ``(name, type, size)`` with type FILE/DIRECTORY/SUBMODULE.
+    """
+    values = []
+    for name, node_type, size in children:
+        child: dict[str, Any] = {
+            "path": {"toString": name, "name": name},
+            "type": node_type,
+        }
+        if size is not None:
+            child["size"] = size
+        values.append(child)
+    return {
+        "path": {"toString": path, "name": path.rsplit("/", 1)[-1] if path else ""},
+        "revision": "main",
+        "children": page(values),
+    }

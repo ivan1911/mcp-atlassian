@@ -161,6 +161,12 @@ CATEGORY_TOOLS: dict[str, list[str]] = {
         "bitbucket_list_projects",
         "bitbucket_list_repositories",
         "bitbucket_get_repository",
+        "bitbucket_list_files",
+        "bitbucket_get_file_content",
+        "bitbucket_list_branches",
+        "bitbucket_list_tags",
+        "bitbucket_list_commits",
+        "bitbucket_get_commit",
     ],
 }
 

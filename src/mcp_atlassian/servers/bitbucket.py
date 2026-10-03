@@ -144,3 +144,266 @@ async def get_repository(
     """
     fetcher = await get_bitbucket_fetcher(ctx)
     return _to_json(fetcher.get_repository(project_key, repo_slug).to_simplified_dict())
+
+
+AtParam = Annotated[
+    str | None,
+    Field(
+        description=(
+            "(Optional) Branch name, tag, fully qualified ref (refs/heads/...) "
+            "or commit hash. Defaults to the repository's default branch."
+        ),
+        default=None,
+    ),
+]
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "read", "toolset:bitbucket_code"},
+    annotations={"title": "List Files", "readOnlyHint": True},
+)
+async def list_files(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    path: Annotated[
+        str,
+        Field(description="Directory path; empty for the repository root.", default=""),
+    ] = "",
+    at: AtParam = None,
+    recursive: Annotated[
+        bool,
+        Field(
+            description=(
+                "List every file below the directory (recursively) instead of "
+                "one level of files and directories."
+            ),
+            default=False,
+        ),
+    ] = False,
+    start: StartParam = 0,
+    limit: LimitParam = 25,
+) -> str:
+    """List files and directories in a repository at a branch, tag or commit.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        path: Directory path.
+        at: Branch, tag or commit.
+        recursive: List all files recursively.
+        start: Index of the first entry (paging).
+        limit: Maximum number of entries.
+
+    Returns:
+        JSON with ``values`` (``path`` from the repository root, ``type`` and
+        ``size``) and paging fields.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    page = fetcher.list_files(
+        project_key,
+        repo_slug,
+        path=path,
+        at=at,
+        recursive=recursive,
+        start=start,
+        limit=limit,
+    )
+    return _to_json(page.to_simplified_dict())
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "read", "toolset:bitbucket_code"},
+    annotations={"title": "Get File Content", "readOnlyHint": True},
+)
+async def get_file_content(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    path: Annotated[str, Field(description="File path from the repository root.")],
+    at: AtParam = None,
+    start_line: Annotated[
+        int,
+        Field(description="First line to return (1-based).", default=1, ge=1),
+    ] = 1,
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of lines to return (1-5000).",
+            default=1000,
+            ge=1,
+            le=5000,
+        ),
+    ] = 1000,
+) -> str:
+    """Read a file (or a line range of it) at a branch, tag or commit.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        path: File path.
+        at: Branch, tag or commit.
+        start_line: First line to return.
+        limit: Maximum number of lines.
+
+    Returns:
+        JSON with ``content``, ``start_line``, ``end_line``, ``total_lines`` and
+        ``truncated`` (read further with a later ``start_line``). Binary files
+        return ``binary`` and ``size_bytes`` without content.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    return _to_json(
+        fetcher.get_file_content(
+            project_key, repo_slug, path, at=at, start_line=start_line, limit=limit
+        )
+    )
+
+
+FilterParam = Annotated[
+    str | None,
+    Field(description="(Optional) Only names containing this text.", default=None),
+]
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "read", "toolset:bitbucket_code"},
+    annotations={"title": "List Branches", "readOnlyHint": True},
+)
+async def list_branches(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    filter: FilterParam = None,
+    start: StartParam = 0,
+    limit: LimitParam = 25,
+) -> str:
+    """List branches, most recently modified first; the default is marked.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        filter: Branch name filter.
+        start: Index of the first branch (paging).
+        limit: Maximum number of branches.
+
+    Returns:
+        JSON with ``values`` (name, id, latest_commit, is_default) and paging.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    page = fetcher.list_branches(
+        project_key, repo_slug, filter_text=filter, start=start, limit=limit
+    )
+    return _to_json(page.to_simplified_dict())
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "read", "toolset:bitbucket_code"},
+    annotations={"title": "List Tags", "readOnlyHint": True},
+)
+async def list_tags(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    filter: FilterParam = None,
+    start: StartParam = 0,
+    limit: LimitParam = 25,
+) -> str:
+    """List tags, most recently modified first.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        filter: Tag name filter.
+        start: Index of the first tag (paging).
+        limit: Maximum number of tags.
+
+    Returns:
+        JSON with ``values`` (name, id, latest_commit) and paging fields.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    page = fetcher.list_tags(
+        project_key, repo_slug, filter_text=filter, start=start, limit=limit
+    )
+    return _to_json(page.to_simplified_dict())
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "read", "toolset:bitbucket_code"},
+    annotations={"title": "List Commits", "readOnlyHint": True},
+)
+async def list_commits(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    at: AtParam = None,
+    path: Annotated[
+        str | None,
+        Field(description="(Optional) Only commits touching this path.", default=None),
+    ] = None,
+    since: Annotated[
+        str | None,
+        Field(
+            description=(
+                "(Optional) Exclude commits reachable from this branch, tag or "
+                "commit, e.g. 'v1.0' to list what changed after a release."
+            ),
+            default=None,
+        ),
+    ] = None,
+    start: StartParam = 0,
+    limit: LimitParam = 25,
+) -> str:
+    """List commits reachable from a branch, tag or commit, newest first.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        at: Branch, tag or commit to list from.
+        path: Only commits touching this path.
+        since: Exclude commits reachable from this ref.
+        start: Index of the first commit (paging).
+        limit: Maximum number of commits.
+
+    Returns:
+        JSON with ``values`` (id, message, author, timestamps, parents) and
+        paging fields.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    page = fetcher.list_commits(
+        project_key, repo_slug, at=at, path=path, since=since, start=start, limit=limit
+    )
+    return _to_json(page.to_simplified_dict())
+
+
+CommitIdParam = Annotated[str, Field(description="Commit hash (full or abbreviated).")]
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "read", "toolset:bitbucket_code"},
+    annotations={"title": "Get Commit", "readOnlyHint": True},
+)
+async def get_commit(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    commit_id: CommitIdParam,
+) -> str:
+    """Get a commit with its message, author, parents and changed files.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        commit_id: Commit hash.
+
+    Returns:
+        JSON commit with ``changes`` (path, type, src_path for moves/copies).
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    commit = fetcher.get_commit(project_key, repo_slug, commit_id)
+    return _to_json(commit.to_simplified_dict())
