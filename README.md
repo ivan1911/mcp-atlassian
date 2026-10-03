@@ -1,11 +1,12 @@
 # MCP Atlassian
 
-![PyPI Version](https://img.shields.io/pypi/v/mcp-atlassian)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/mcp-atlassian)
-![PePy - Total Downloads](https://static.pepy.tech/personalized-badge/mcp-atlassian?period=total&units=international_system&left_color=grey&right_color=blue&left_text=Total%20Downloads)
-[![Run Tests](https://github.com/sooperset/mcp-atlassian/actions/workflows/tests.yml/badge.svg)](https://github.com/sooperset/mcp-atlassian/actions/workflows/tests.yml)
-![License](https://img.shields.io/github/license/sooperset/mcp-atlassian)
+![PyPI Version](https://img.shields.io/pypi/v/olddevs-mcp-atlassian)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/olddevs-mcp-atlassian)
+[![Run Tests](https://github.com/ivan1911/olddevs-mcp-atlassian/actions/workflows/tests.yml/badge.svg)](https://github.com/ivan1911/olddevs-mcp-atlassian/actions/workflows/tests.yml)
+![License](https://img.shields.io/github/license/ivan1911/olddevs-mcp-atlassian)
 [![Docs](https://img.shields.io/badge/docs-mintlify-blue)](https://mcp-atlassian.soomiles.com)
+
+> **This is a fork** of [sooperset/mcp-atlassian](https://github.com/sooperset/mcp-atlassian) that adds Bitbucket Data Center support. It is published on PyPI as [`olddevs-mcp-atlassian`](https://pypi.org/project/olddevs-mcp-atlassian/); the command is `olddevs-mcp-atlassian` (`mcp-atlassian` also works). The linked documentation site describes the upstream project; Bitbucket is covered in this README.
 
 Model Context Protocol (MCP) server for Atlassian products: Jira, Confluence and Bitbucket. Jira and Confluence are supported on Cloud and Server/Data Center; Bitbucket is supported on Data Center (self-hosted) only.
 
@@ -37,7 +38,7 @@ Add to your Claude Desktop or Cursor MCP configuration:
   "mcpServers": {
     "mcp-atlassian": {
       "command": "uvx",
-      "args": ["mcp-atlassian"],
+      "args": ["olddevs-mcp-atlassian"],
       "env": {
         "JIRA_URL": "https://your-company.atlassian.net",
         "JIRA_USERNAME": "your.email@company.com",
@@ -71,7 +72,7 @@ autohand mcp add mcp-atlassian env \
   CONFLUENCE_API_TOKEN=your_api_token \
   BITBUCKET_URL=https://bitbucket.your-company.com \
   BITBUCKET_PERSONAL_TOKEN=your_bitbucket_http_access_token \
-  uvx mcp-atlassian
+  uvx olddevs-mcp-atlassian
 ```
 
 Add `--scope project` after `add` to keep the configuration in the current
@@ -97,7 +98,7 @@ Bitbucket support targets self-hosted **Bitbucket Data Center** (v8.0+, tested o
   "mcpServers": {
     "mcp-atlassian": {
       "command": "uvx",
-      "args": ["mcp-atlassian"],
+      "args": ["olddevs-mcp-atlassian"],
       "env": {
         "BITBUCKET_URL": "https://bitbucket.your-company.com",
         "BITBUCKET_PERSONAL_TOKEN": "your_http_access_token",
@@ -128,7 +129,7 @@ Safety and limits:
 - **Code search** (`bitbucket_search`) uses Bitbucket's unofficial search endpoint. It only covers default branches, and it is not part of `TOOLSETS=default`; enable it with, for example, `TOOLSETS=default,bitbucket_search`.
 - **Deleting** pull requests and branches (`bitbucket_destructive`) is never enabled implicitly, not even by `TOOLSETS=all`. Name it explicitly: `TOOLSETS=all,bitbucket_destructive`.
 
-All variables are listed in [.env.example](.env.example).
+All variables are listed in [.env.example](https://github.com/ivan1911/olddevs-mcp-atlassian/blob/main/.env.example).
 
 ## Documentation
 
@@ -172,12 +173,12 @@ Documentation is also available in [llms.txt format](https://llmstxt.org/), whic
 
 ## Security
 
-Never share API tokens. Keep `.env` files secure. See [SECURITY.md](SECURITY.md).
+Never share API tokens. Keep `.env` files secure. See [SECURITY.md](https://github.com/ivan1911/olddevs-mcp-atlassian/blob/main/SECURITY.md).
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup.
+See [CONTRIBUTING.md](https://github.com/ivan1911/olddevs-mcp-atlassian/blob/main/CONTRIBUTING.md) for development setup.
 
 ## License
 
-MIT - See [LICENSE](LICENSE). Not an official Atlassian product.
+MIT - See [LICENSE](https://github.com/ivan1911/olddevs-mcp-atlassian/blob/main/LICENSE). Not an official Atlassian product.

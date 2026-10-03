@@ -1,7 +1,7 @@
 [project]
-name = "mcp-atlassian"
+name = "olddevs-mcp-atlassian"
 dynamic = ["version"]
-description = "The Model Context Protocol (MCP) Atlassian integration is an open-source implementation that bridges Atlassian products (Jira and Confluence) with AI language models following Anthropic's MCP specification. This project enables secure, contextual AI interactions with Atlassian tools while maintaining data privacy and security. Key features include:"
+description = "MCP server for Atlassian Jira, Confluence and Bitbucket Data Center: a fork of mcp-atlassian with Bitbucket Data Center support."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -42,11 +42,21 @@ wpad = ["pypac>=0.17.2"]
 name = "sooperset"
 email = "soomiles.dev@gmail.com"
 
+[[project.maintainers]]
+name = "ivan1911"
+
+[project.urls]
+Homepage = "https://github.com/ivan1911/olddevs-mcp-atlassian"
+Repository = "https://github.com/ivan1911/olddevs-mcp-atlassian"
+Issues = "https://github.com/ivan1911/olddevs-mcp-atlassian/issues"
+Upstream = "https://github.com/sooperset/mcp-atlassian"
+
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning>=0.7.0"]
 build-backend = "hatchling.build"
 
 [project.scripts]
+olddevs-mcp-atlassian = "mcp_atlassian:main"
 mcp-atlassian = "mcp_atlassian:main"
 
 [dependency-groups]
@@ -163,6 +173,10 @@ disallow_untyped_defs = false
 module = "pypac.*"
 ignore_missing_imports = true
 
+[tool.hatch.build.targets.wheel]
+# The distribution name (olddevs-mcp-atlassian) differs from the import package.
+packages = ["src/mcp_atlassian"]
+
 [tool.hatch.version]
 source = "uv-dynamic-versioning"
 
@@ -170,4 +184,6 @@ source = "uv-dynamic-versioning"
 vcs = "git"
 style = "pep440"
 bump = true
+# PyPI rejects local versions (+g<hash>); untagged builds become X.Y.Z.devN.
+metadata = false
 fallback-version = "0.0.0"

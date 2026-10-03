@@ -21,6 +21,12 @@
 
 ---
 
+## Packaging
+
+- Published on PyPI as **`olddevs-mcp-atlassian`** (fork of upstream `mcp-atlassian`); the import package is still `mcp_atlassian` and both console scripts exist (ADR-0003).
+- Never hardcode the distribution name; use `mcp_atlassian.utils.package.get_package_version()`.
+- Release: publish a GitHub Release tagged `vX.Y.Z` → `.github/workflows/publish.yml` uploads via Trusted Publishing. A manual run uploads to TestPyPI.
+
 ## Architecture
 
 - **Mixin composition**: `JiraFetcher` and `ConfluenceFetcher` are composed from the mixins listed in their `__init__.py`; client inheritance is transitive through mixins.
