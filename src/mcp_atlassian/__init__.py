@@ -3,7 +3,6 @@ import logging
 import os
 import sys
 import threading
-from importlib.metadata import PackageNotFoundError, version
 
 from dotenv import dotenv_values, load_dotenv
 
@@ -43,12 +42,9 @@ from mcp_atlassian.utils.lifecycle import (
     setup_signal_handlers,
 )
 from mcp_atlassian.utils.logging import setup_logging
+from mcp_atlassian.utils.package import get_package_version
 
-try:
-    __version__ = version("mcp-atlassian")
-except PackageNotFoundError:
-    # package is not installed
-    __version__ = "0.0.0"
+__version__ = get_package_version()
 
 # Initialize logging with appropriate level
 logging_level = logging.WARNING
