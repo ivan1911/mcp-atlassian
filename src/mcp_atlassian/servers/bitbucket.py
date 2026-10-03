@@ -1346,3 +1346,63 @@ async def publish_review(
             project_key, repo_slug, pull_request_id, status=status, comment=comment
         )
     )
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "read", "toolset:bitbucket_search"},
+    annotations={"title": "Search Code", "readOnlyHint": True},
+)
+async def search_code(
+    ctx: Context,
+    query: Annotated[
+        str,
+        Field(
+            description=(
+                "Search terms. Bitbucket modifiers may be added, e.g. "
+                "'lang:python', 'ext:sql'."
+            ),
+            min_length=1,
+        ),
+    ],
+    project_key: Annotated[
+        str | None,
+        Field(description="(Optional) Only this project.", default=None),
+    ] = None,
+    repo_slug: Annotated[
+        str | None,
+        Field(
+            description="(Optional) Only this repository (needs project_key).",
+            default=None,
+        ),
+    ] = None,
+    start: StartParam = 0,
+    limit: LimitParam = 25,
+) -> str:
+    """Search code in Bitbucket and return files with matching lines.
+
+    Uses Bitbucket's unofficial search endpoint (no public code search API
+    exists in Data Center); it needs a configured search server and may be
+    unavailable. On failure, browse with bitbucket_list_files instead.
+
+    Args:
+        ctx: The FastMCP context.
+        query: Search terms.
+        project_key: Project filter.
+        repo_slug: Repository filter.
+        start: Index of the first file hit (paging).
+        limit: Maximum number of file hits.
+
+    Returns:
+        JSON with ``values`` (project_key, repo_slug, path, hit_count, matches
+        with line numbers) and paging fields.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    return _to_json(
+        fetcher.search_code(
+            query,
+            project_key=project_key,
+            repo_slug=repo_slug,
+            start=start,
+            limit=limit,
+        )
+    )

@@ -159,3 +159,19 @@ Get what a commit changed, as unified diff text.
 | `ignore_whitespace` | `boolean` | No | Ignore whitespace-only changes. |
 
 ---
+
+### Search Code
+
+Search code in Bitbucket and return files with matching lines.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `query` | `string` | Yes | Search terms. Bitbucket modifiers may be added, e.g. 'lang:python', 'ext:sql'. |
+| `project_key` | `string` | No | (Optional) Only this project. |
+| `repo_slug` | `string` | No | (Optional) Only this repository (needs project_key). |
+| `start` | `integer` | No | Index of the first item to return. Pass next_page_start from a previous response to get the next page. |
+| `limit` | `integer` | No | Maximum number of items (1-100) |
+
+---

@@ -11,10 +11,17 @@ from .manage import ManageMixin
 from .projects import ProjectsMixin
 from .pull_requests import PullRequestsMixin
 from .review import ReviewMixin
+from .search import SearchMixin
 
 
 class BitbucketFetcher(
-    ManageMixin, ProjectsMixin, CodeMixin, PullRequestsMixin, DiffMixin, ReviewMixin
+    ManageMixin,
+    ProjectsMixin,
+    CodeMixin,
+    PullRequestsMixin,
+    DiffMixin,
+    ReviewMixin,
+    SearchMixin,
 ):
     """Main entry point for Bitbucket operations, composed from mixins.
 
@@ -25,9 +32,11 @@ class BitbucketFetcher(
     - PullRequestsMixin: finding and reading pull requests
     - ReviewMixin: pull request comments and tasks
     - ManageMixin: create, update, merge, decline, reopen; create branches
+    - SearchMixin: code search (unofficial endpoint)
     - PullRequestsMixin: finding and reading pull requests
     - ReviewMixin: pull request comments and tasks
     - ManageMixin: create, update, merge, decline, reopen; create branches
+    - SearchMixin: code search (unofficial endpoint)
     """
 
 

@@ -30,7 +30,11 @@ def known_user(fake, username="Alice.Smith", slug="alice.smith"):
 class TestSetReviewerStatus:
     @pytest.mark.parametrize(
         ("status", "sent"),
-        [("approved", "APPROVED"), ("needs_work", "NEEDS_WORK"), ("unapproved", "UNAPPROVED")],
+        [
+            ("approved", "APPROVED"),
+            ("needs_work", "NEEDS_WORK"),
+            ("unapproved", "UNAPPROVED"),
+        ],
     )
     async def test_sets_status_as_the_token_user(
         self, bb, fake_bitbucket, status, sent
