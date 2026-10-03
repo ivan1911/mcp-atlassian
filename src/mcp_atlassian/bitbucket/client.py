@@ -160,6 +160,43 @@ class BitbucketClient:
         for header_name, header_value in (self.config.custom_headers or {}).items():
             self.bitbucket._session.headers[header_name] = header_value  # noqa: SLF001
 
+    def _project_key(self, project_key: str) -> str:
+        """Normalize a project key and enforce BITBUCKET_PROJECTS_FILTER.
+
+        Args:
+            project_key: Project key in any case (keys are case-insensitive).
+
+        Returns:
+            The upper-cased project key.
+
+        Raises:
+            ValueError: If the key is empty or outside the projects filter.
+                Raised before any request is made.
+        """
+        key = project_key.strip().upper()
+        if not key:
+            raise ValueError("project_key must not be empty.")
+        allowed = self.config.allowed_project_keys
+        if allowed is not None and key not in allowed:
+            raise ValueError(
+                f"Project '{key}' is not allowed by BITBUCKET_PROJECTS_FILTER "
+                f"(allowed: {', '.join(sorted(allowed))})."
+            )
+        return key
+
+    def _is_project_allowed(self, project_key: str | None) -> bool:
+        """Return whether list results from ``project_key`` may be shown."""
+        allowed = self.config.allowed_project_keys
+        return allowed is None or (project_key or "").upper() in allowed
+
+    def _repo_path(self, project_key: str, repo_slug: str) -> str:
+        """API path of a repository, after enforcing the projects filter."""
+        key = self._project_key(project_key)
+        slug = repo_slug.strip()
+        if not slug:
+            raise ValueError("repo_slug must not be empty.")
+        return f"{API}/projects/{segment(key)}/repos/{segment(slug)}"
+
     def _request(
         self,
         method: str,
@@ -198,8 +235,11 @@ class BitbucketClient:
         return response
 
     def _get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
-        """GET ``path`` and return the decoded JSON body."""
-        return self._request("GET", path, params=params).json()
+        """GET ``path`` and return the decoded JSON body (None when empty)."""
+        response = self._request("GET", path, params=params)
+        if response.status_code == 204 or not response.content:
+            return None
+        return response.json()
 
     def _get_page(
         self,

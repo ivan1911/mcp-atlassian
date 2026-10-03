@@ -1,9 +1,9 @@
 ---
 title: "Tools Reference"
-description: "Overview of all 99 MCP tools for Jira, Confluence and Bitbucket — organized by category with quick links"
+description: "Overview of all 101 MCP tools for Jira, Confluence and Bitbucket — organized by category with quick links"
 ---
 
-MCP Atlassian provides **99 tools** for interacting with Jira, Confluence and Bitbucket Data Center. Tools are organized by category below.
+MCP Atlassian provides **101 tools** for interacting with Jira, Confluence and Bitbucket Data Center. Tools are organized by category below.
 
 ## Jira Tools
 
@@ -111,7 +111,7 @@ Toolsets group related tools for easier management via `TOOLSETS` env var or `--
 
 | Toolset | Core | Tools |
 |---------|:----:|-------|
-| `bitbucket_projects` | Yes | `bitbucket_list_projects` |
+| `bitbucket_projects` | Yes | `bitbucket_list_projects`, `bitbucket_list_repositories`, `bitbucket_get_repository` |
 
 **Migration Toolsets (1):**
 
@@ -127,7 +127,7 @@ TOOLSETS=default,jira_agile,jira_attachments
 # Enable deprecated tools only while migrating to their replacements:
 TOOLSETS=legacy
 
-# Enable all toolsets (99 tools)
+# Enable all toolsets (101 tools)
 TOOLSETS=all
 
 # Command line

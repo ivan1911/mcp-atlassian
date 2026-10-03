@@ -159,6 +159,8 @@ CATEGORY_TOOLS: dict[str, list[str]] = {
     ],
     "bitbucket-code": [
         "bitbucket_list_projects",
+        "bitbucket_list_repositories",
+        "bitbucket_get_repository",
     ],
 }
 

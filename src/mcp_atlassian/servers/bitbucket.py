@@ -65,3 +65,82 @@ async def list_projects(
     fetcher = await get_bitbucket_fetcher(ctx)
     page = fetcher.list_projects(start=start, limit=limit)
     return _to_json(page.to_simplified_dict())
+
+
+ProjectKeyParam = Annotated[
+    str,
+    Field(description="Project key, e.g. 'PLAT' (case-insensitive)."),
+]
+RepoSlugParam = Annotated[
+    str,
+    Field(description="Repository slug, e.g. 'billing-api'."),
+]
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "read", "toolset:bitbucket_projects"},
+    annotations={"title": "List Repositories", "readOnlyHint": True},
+)
+async def list_repositories(
+    ctx: Context,
+    project_key: Annotated[
+        str | None,
+        Field(
+            description="(Optional) Only repositories of this project key.",
+            default=None,
+        ),
+    ] = None,
+    name: Annotated[
+        str | None,
+        Field(
+            description=(
+                "(Optional) Case-insensitive repository name filter. Without "
+                "project_key it searches across all projects."
+            ),
+            default=None,
+        ),
+    ] = None,
+    start: StartParam = 0,
+    limit: LimitParam = 25,
+) -> str:
+    """List repositories in a project, or find repositories by name.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Restrict to this project.
+        name: Repository name filter.
+        start: Index of the first repository (paging).
+        limit: Maximum number of repositories.
+
+    Returns:
+        JSON with ``values`` (repositories with project_key, slug, name) and
+        paging fields.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    page = fetcher.list_repositories(
+        project_key=project_key, name=name, start=start, limit=limit
+    )
+    return _to_json(page.to_simplified_dict())
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "read", "toolset:bitbucket_projects"},
+    annotations={"title": "Get Repository", "readOnlyHint": True},
+)
+async def get_repository(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+) -> str:
+    """Get repository details, including its default branch and clone URLs.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+
+    Returns:
+        JSON repository with project_key, slug, default_branch and clone_urls.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    return _to_json(fetcher.get_repository(project_key, repo_slug).to_simplified_dict())

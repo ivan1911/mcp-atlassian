@@ -169,3 +169,47 @@ def project(key: str, name: str | None = None, **extra: Any) -> dict[str, Any]:
         "links": {"self": [{"href": f"https://bitbucket.example.com/projects/{key}"}]},
         **extra,
     }
+
+
+def repository(project_key: str, slug: str, **extra: Any) -> dict[str, Any]:
+    """Build a Bitbucket repository payload."""
+    base = "https://bitbucket.example.com"
+    return {
+        "slug": slug,
+        "id": abs(hash((project_key, slug))) % 10_000,
+        "name": slug.replace("-", " ").title(),
+        "description": f"{slug} repository",
+        "state": "AVAILABLE",
+        "forkable": True,
+        "public": False,
+        "archived": False,
+        "scmId": "git",
+        "project": project(project_key),
+        "links": {
+            "self": [{"href": f"{base}/projects/{project_key}/repos/{slug}/browse"}],
+            "clone": [
+                {
+                    "href": f"{base}/scm/{project_key.lower()}/{slug}.git",
+                    "name": "http",
+                },
+                {
+                    "href": f"ssh://git@bitbucket.example.com:7999/"
+                    f"{project_key.lower()}/{slug}.git",
+                    "name": "ssh",
+                },
+            ],
+        },
+        **extra,
+    }
+
+
+def branch_ref(name: str, *, latest_commit: str = "a" * 40, default: bool = False):
+    """Build a Bitbucket branch payload."""
+    return {
+        "id": f"refs/heads/{name}",
+        "displayId": name,
+        "type": "BRANCH",
+        "latestCommit": latest_commit,
+        "latestChangeset": latest_commit,
+        "isDefault": default,
+    }
