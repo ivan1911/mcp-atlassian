@@ -256,7 +256,7 @@ Merge a pull request. If Bitbucket refuses, the error lists why.
 | `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
 | `pull_request_id` | `integer` | Yes | Pull request id. |
 | `strategy` | `string` | No | (Optional) Merge strategy id configured for the repository, e.g. 'no-ff', 'ff', 'ff-only', 'squash', 'squash-ff-only', 'rebase-no-ff', 'rebase-ff-only'. Defaults to the repository's. |
-| `message` | `string` | No | (Optional) Merge commit message. |
+| `message` | `string` | No | (Optional) Text for the merge commit body. Bitbucket keeps its own subject line ('Merge pull request #N ...') and puts this text below it. |
 | `version` | `integer` | No | (Optional) Pull request version from bitbucket_get_pull_request. Pass it to have the change refused if the pull request changed since you read it; omit it to use the current version. |
 
 ---

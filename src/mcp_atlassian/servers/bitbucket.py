@@ -1148,7 +1148,14 @@ async def merge_pull_request(
     ] = None,
     message: Annotated[
         str | None,
-        Field(description="(Optional) Merge commit message.", default=None),
+        Field(
+            description=(
+                "(Optional) Text for the merge commit body. Bitbucket keeps its "
+                "own subject line ('Merge pull request #N ...') and puts this "
+                "text below it."
+            ),
+            default=None,
+        ),
     ] = None,
     version: VersionParam = None,
 ) -> str:
@@ -1162,7 +1169,7 @@ async def merge_pull_request(
         repo_slug: Repository slug.
         pull_request_id: Pull request id.
         strategy: Merge strategy id.
-        message: Merge commit message.
+        message: Merge commit body text.
         version: Expected pull request version.
 
     Returns:

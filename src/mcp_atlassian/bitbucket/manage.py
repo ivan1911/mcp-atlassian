@@ -183,7 +183,7 @@ class ManageMixin(BitbucketClient, RepositoryOperationsProto):
             repo_slug: Repository slug.
             pull_request_id: Pull request id.
             strategy: Merge strategy id (repository default when omitted).
-            message: Merge commit message.
+            message: Merge commit body; Bitbucket keeps its own subject line.
             version: Expected version; the current one is read when omitted.
 
         Returns:
