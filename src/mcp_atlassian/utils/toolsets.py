@@ -167,6 +167,11 @@ BITBUCKET_TOOLSETS: dict[str, ToolsetDefinition] = {
         description="Bitbucket files, branches, tags, commits and commit diffs",
         default=True,
     ),
+    "bitbucket_pull_requests": ToolsetDefinition(
+        name="bitbucket_pull_requests",
+        description="Find and read Bitbucket pull requests, diffs and activity",
+        default=True,
+    ),
 }
 
 # --- Combined registry ---
@@ -197,11 +202,11 @@ def _implicit_toolsets() -> set[str]:
 def get_enabled_toolsets() -> set[str]:
     """Parse the TOOLSETS env var into a set of enabled toolset names.
 
-    Supports keywords 'all' (all 27 toolsets) and 'default' (8 defaults),
+    Supports keywords 'all' (all 28 toolsets) and 'default' (9 defaults),
     plus comma-separated specific toolset names. Case-insensitive for keywords.
 
     When TOOLSETS is unset or empty, returns all toolsets with a deprecation
-    warning. In v0.22.0 the default will change to DEFAULT_TOOLSETS (8 core).
+    warning. In v0.22.0 the default will change to DEFAULT_TOOLSETS (9 core).
     Set ``TOOLSETS=all`` explicitly to preserve current behavior.
 
     Toolsets marked ``explicit_only`` are never enabled by an unset TOOLSETS,
@@ -213,10 +218,10 @@ def get_enabled_toolsets() -> set[str]:
         names are given, returns an empty set (fail-closed).
 
     Examples:
-        TOOLSETS unset -> all 27 toolsets (with deprecation warning)
-        TOOLSETS="" -> all 27 toolsets (with deprecation warning)
-        TOOLSETS="all" -> all 27 names
-        TOOLSETS="default" -> 8 default names
+        TOOLSETS unset -> all 28 toolsets (with deprecation warning)
+        TOOLSETS="" -> all 28 toolsets (with deprecation warning)
+        TOOLSETS="all" -> all 28 names
+        TOOLSETS="default" -> 9 default names
         TOOLSETS="default,jira_agile" -> defaults + jira_agile
         TOOLSETS="typo_name" -> set() (fail-closed)
     """

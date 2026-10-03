@@ -64,9 +64,9 @@ def render_unified_diff(diff_json: dict[str, Any]) -> tuple[str, int, bool]:
                 f"+{hunk.get('destinationLine', 0)},"
                 f"{hunk.get('destinationSpan', 0)} @@"
             )
-            for segment in hunk.get("segments") or []:
-                prefix = _SEGMENT_PREFIX.get(str(segment.get("type")), " ")
-                for line in segment.get("lines") or []:
+            for seg in hunk.get("segments") or []:
+                prefix = _SEGMENT_PREFIX.get(str(seg.get("type")), " ")
+                for line in seg.get("lines") or []:
                     out.append(f"{prefix}{line.get('line', '')}")
     text = "\n".join(out) + ("\n" if out else "")
     return text, len(files), _is_truncated(diff_json)

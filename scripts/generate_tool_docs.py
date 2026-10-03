@@ -169,6 +169,13 @@ CATEGORY_TOOLS: dict[str, list[str]] = {
         "bitbucket_get_commit",
         "bitbucket_get_commit_diff",
     ],
+    "bitbucket-pull-requests": [
+        "bitbucket_list_pull_requests",
+        "bitbucket_get_my_pull_requests",
+        "bitbucket_get_pull_request",
+        "bitbucket_get_pull_request_changes",
+        "bitbucket_get_pull_request_commits",
+    ],
 }
 
 CATEGORY_META: dict[str, dict[str, str]] = {
@@ -235,6 +242,13 @@ CATEGORY_META: dict[str, dict[str, str]] = {
         "title": "Bitbucket Projects & Code",
         "description": (
             "Projects, repositories, files, branches, commits, and code search"
+        ),
+    },
+    "bitbucket-pull-requests": {
+        "title": "Bitbucket Pull Requests",
+        "description": (
+            "Find, read, review, and manage pull requests: diffs, activity, "
+            "comments, tasks, reviewer status, merges, and branches"
         ),
     },
 }

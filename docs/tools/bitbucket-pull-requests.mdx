@@ -1,0 +1,88 @@
+---
+title: "Bitbucket Pull Requests"
+description: "Find, read, review, and manage pull requests: diffs, activity, comments, tasks, reviewer status, merges, and branches"
+---
+
+### List Pull Requests
+
+List pull requests of a repository, newest first.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `state` | `string` | No | Pull request state: OPEN, MERGED, DECLINED or ALL. |
+| `direction` | `string` | No | INCOMING: pull requests into this repository; OUTGOING: pull requests from it. |
+| `target_branch` | `string` | No | (Optional) Only pull requests into this branch (from it when direction is OUTGOING). |
+| `author` | `string` | No | (Optional) Author user slug. |
+| `reviewer` | `string` | No | (Optional) Reviewer user slug. |
+| `text` | `string` | No | (Optional) Text to find in the title or description. |
+| `start` | `integer` | No | Index of the first item to return. Pass next_page_start from a previous response to get the next page. |
+| `limit` | `integer` | No | Maximum number of items (1-100) |
+
+---
+
+### Get My Pull Requests
+
+List your pull requests across repositories (the Bitbucket dashboard).
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `role` | `string` | No | (Optional) Your role: AUTHOR, REVIEWER or PARTICIPANT. Default: any role. |
+| `state` | `string` | No | Pull request state: OPEN, MERGED, DECLINED or ALL. |
+| `participant_status` | `string` | No | (Optional) Your reviewer status: APPROVED, UNAPPROVED or NEEDS_WORK. |
+| `start` | `integer` | No | Index of the first item to return. Pass next_page_start from a previous response to get the next page. |
+| `limit` | `integer` | No | Maximum number of items (1-100) |
+
+---
+
+### Get Pull Request
+
+Get a pull request with its description, branches and reviewers.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `include_merge_status` | `boolean` | No | Also check whether it can be merged and what blocks it (conflicts, merge checks). Costs one more request. |
+
+---
+
+### Get Pull Request Changes
+
+List the files a pull request changes, with the change type.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `start` | `integer` | No | Index of the first item to return. Pass next_page_start from a previous response to get the next page. |
+| `limit` | `integer` | No | Maximum number of files (1-1000) |
+
+---
+
+### Get Pull Request Commits
+
+List the commits of a pull request, newest first.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `start` | `integer` | No | Index of the first item to return. Pass next_page_start from a previous response to get the next page. |
+| `limit` | `integer` | No | Maximum number of items (1-100) |
+
+---

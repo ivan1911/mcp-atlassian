@@ -92,6 +92,15 @@ def file_path(path: str) -> str:
     return quote(path.strip("/"), safe="/")
 
 
+def qualify_branch(ref: str) -> str:
+    """Expand a short branch name to ``refs/heads/<name>``.
+
+    Fully qualified refs (``refs/...``) are returned unchanged.
+    """
+    ref = ref.strip()
+    return ref if ref.startswith("refs/") else f"refs/heads/{ref}"
+
+
 class BitbucketClient:
     """Base client for Bitbucket Data Center API interactions."""
 

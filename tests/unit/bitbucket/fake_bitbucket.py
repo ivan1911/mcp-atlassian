@@ -363,3 +363,68 @@ def diff(
         "diffs": files,
         "truncated": truncated,
     }
+
+
+def pr_ref(project_key: str, slug: str, branch: str, sha: str = "d" * 40):
+    """Build a pull request source/target ref."""
+    return {
+        "id": f"refs/heads/{branch}",
+        "displayId": branch,
+        "latestCommit": sha,
+        "repository": repository(project_key, slug),
+    }
+
+
+def participant(name: str, status: str = "UNAPPROVED", role: str = "REVIEWER"):
+    """Build a pull request participant."""
+    return {
+        "user": user(name),
+        "role": role,
+        "approved": status == "APPROVED",
+        "status": status,
+    }
+
+
+def pull_request(
+    pr_id: int,
+    title: str = "Add login",
+    *,
+    project_key: str = "PLAT",
+    slug: str = "api",
+    source: str = "feature/login",
+    target: str = "main",
+    version: int = 3,
+    state: str = "OPEN",
+    author: str = "alice",
+    reviewers: list[dict[str, Any]] | None = None,
+    **extra: Any,
+) -> dict[str, Any]:
+    """Build a Bitbucket pull request payload."""
+    return {
+        "id": pr_id,
+        "version": version,
+        "title": title,
+        "description": f"Implements {title.lower()}",
+        "state": state,
+        "open": state == "OPEN",
+        "closed": state != "OPEN",
+        "draft": False,
+        "createdDate": 1_700_000_000_000,
+        "updatedDate": 1_700_000_360_000,
+        "fromRef": pr_ref(project_key, slug, source),
+        "toRef": pr_ref(project_key, slug, target, sha="e" * 40),
+        "locked": False,
+        "author": participant(author, role="AUTHOR"),
+        "reviewers": reviewers if reviewers is not None else [],
+        "participants": [],
+        "properties": {"commentCount": 2, "openTaskCount": 1, "resolvedTaskCount": 0},
+        "links": {
+            "self": [
+                {
+                    "href": f"https://bitbucket.example.com/projects/{project_key}"
+                    f"/repos/{slug}/pull-requests/{pr_id}"
+                }
+            ]
+        },
+        **extra,
+    }
