@@ -1,6 +1,7 @@
-"""Dependency providers for JiraFetcher and ConfluenceFetcher with context awareness.
+"""Dependency providers for Jira, Confluence and Bitbucket fetchers.
 
-Provides get_jira_fetcher and get_confluence_fetcher for use in tool functions.
+Provides get_jira_fetcher, get_confluence_fetcher and get_bitbucket_fetcher for
+use in tool functions.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from fastmcp import Context
 from fastmcp.server.dependencies import get_access_token, get_http_request
 from starlette.requests import Request
 
+from mcp_atlassian.bitbucket import BitbucketFetcher
 from mcp_atlassian.confluence import ConfluenceConfig, ConfluenceFetcher
 from mcp_atlassian.jira import JiraConfig, JiraFetcher
 from mcp_atlassian.servers.context import MainAppContext
@@ -1078,3 +1080,44 @@ async def get_confluence_fetcher(ctx: Context) -> ConfluenceFetcher:
         ValueError: If configuration or credentials are invalid.
     """
     return await _get_fetcher(ctx, _confluence_spec())
+
+
+async def get_bitbucket_fetcher(ctx: Context) -> BitbucketFetcher:
+    """Returns a BitbucketFetcher built from the global (environment) config.
+
+    Bitbucket supports only the operator's personal token from the environment;
+    per-request header or OAuth credentials are never used. Over HTTP, serving
+    a request with the operator's token requires ALLOW_GLOBAL_CRED_FALLBACK,
+    because the request's own identity (e.g. a Jira token) cannot be mapped to
+    a Bitbucket identity.
+
+    Args:
+        ctx: The FastMCP context.
+
+    Returns:
+        BitbucketFetcher for the configured instance.
+
+    Raises:
+        ValueError: If Bitbucket is not configured, or the request is an HTTP
+            request and the global-credential fallback is not allowed.
+    """
+    app_ctx = _get_app_lifespan_ctx(ctx)
+    config = getattr(app_ctx, "full_bitbucket_config", None) if app_ctx else None
+    if config is None:
+        raise ValueError(
+            "Bitbucket client (fetcher) not available. Set BITBUCKET_URL and "
+            "BITBUCKET_PERSONAL_TOKEN."
+        )
+    try:
+        get_http_request()
+        in_http_context = True
+    except RuntimeError:
+        in_http_context = False
+    if in_http_context and not is_env_truthy("ALLOW_GLOBAL_CRED_FALLBACK"):
+        raise ValueError(
+            "Bitbucket client (fetcher) not available: Bitbucket uses only the "
+            "operator's BITBUCKET_PERSONAL_TOKEN, and serving an HTTP request "
+            "with it requires ALLOW_GLOBAL_CRED_FALLBACK=true "
+            "(single-user deployments only)."
+        )
+    return BitbucketFetcher(config=config)

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Generate MDX documentation for all MCP tools.
 
-Introspects the FastMCP server instances (jira_mcp, confluence_mcp) to extract
+Introspects the FastMCP server instances (jira_mcp, confluence_mcp,
+bitbucket_mcp) to extract
 tool metadata, then renders per-category MDX pages via a Jinja2 template.
 
 Usage:
@@ -156,6 +157,9 @@ CATEGORY_TOOLS: dict[str, list[str]] = {
         "confluence_get_page_template",
         "confluence_create_page_from_template",
     ],
+    "bitbucket-code": [
+        "bitbucket_list_projects",
+    ],
 }
 
 CATEGORY_META: dict[str, dict[str, str]] = {
@@ -217,6 +221,12 @@ CATEGORY_META: dict[str, dict[str, str]] = {
     "confluence-templates": {
         "title": "Confluence Templates",
         "description": "List page templates and create pages from them",
+    },
+    "bitbucket-code": {
+        "title": "Bitbucket Projects & Code",
+        "description": (
+            "Projects, repositories, files, branches, commits, and code search"
+        ),
     },
 }
 
@@ -286,6 +296,8 @@ class ToolCounts:
     jira_toolsets: int
     confluence_toolsets: int
     core_toolsets: int
+    bitbucket_tools: int = 0
+    bitbucket_toolsets: int = 0
 
 
 @dataclass
@@ -351,40 +363,34 @@ def _make_display_name(tool_name: str, annotations: Any) -> str:
     # Fallback: jira_get_issue -> Get Issue
     parts = tool_name.split("_")
     # Drop service prefix
-    if parts and parts[0] in ("jira", "confluence"):
+    if parts and parts[0] in ("jira", "confluence", "bitbucket"):
         parts = parts[1:]
     return " ".join(p.capitalize() for p in parts)
 
 
 async def get_all_tools() -> dict[str, dict[str, Any]]:
-    """Extract tools from both FastMCP server instances."""
+    """Extract tools from all service FastMCP server instances."""
+    from mcp_atlassian.servers.bitbucket import bitbucket_mcp
     from mcp_atlassian.servers.confluence import confluence_mcp
     from mcp_atlassian.servers.jira import jira_mcp
 
-    jira_tools = await jira_mcp.list_tools()
-    confluence_tools = await confluence_mcp.list_tools()
-
     all_tools: dict[str, dict[str, Any]] = {}
 
-    for tool in jira_tools:
-        prefixed = f"jira_{tool.name}"
-        mcp_tool = tool.to_mcp_tool(name=prefixed)
-        all_tools[prefixed] = {
-            "mcp_tool": mcp_tool,
-            "tags": tool.tags if hasattr(tool, "tags") else set(),
-            "annotations": getattr(tool, "annotations", None),
-            "is_write": "write" in (tool.tags if hasattr(tool, "tags") else set()),
-        }
-
-    for tool in confluence_tools:
-        prefixed = f"confluence_{tool.name}"
-        mcp_tool = tool.to_mcp_tool(name=prefixed)
-        all_tools[prefixed] = {
-            "mcp_tool": mcp_tool,
-            "tags": tool.tags if hasattr(tool, "tags") else set(),
-            "annotations": getattr(tool, "annotations", None),
-            "is_write": "write" in (tool.tags if hasattr(tool, "tags") else set()),
-        }
+    for prefix, server in (
+        ("jira", jira_mcp),
+        ("confluence", confluence_mcp),
+        ("bitbucket", bitbucket_mcp),
+    ):
+        for tool in await server.list_tools():
+            prefixed = f"{prefix}_{tool.name}"
+            mcp_tool = tool.to_mcp_tool(name=prefixed)
+            tags = tool.tags if hasattr(tool, "tags") else set()
+            all_tools[prefixed] = {
+                "mcp_tool": mcp_tool,
+                "tags": tags,
+                "annotations": getattr(tool, "annotations", None),
+                "is_write": "write" in tags,
+            }
 
     return all_tools
 
@@ -477,6 +483,7 @@ def get_tool_counts(tools: dict[str, dict[str, Any]]) -> ToolCounts:
     """Calculate tool and toolset counts from their live registries."""
     from mcp_atlassian.utils.toolsets import (
         ALL_TOOLSETS,
+        BITBUCKET_TOOLSETS,
         CONFLUENCE_TOOLSETS,
         DEFAULT_TOOLSETS,
         JIRA_TOOLSETS,
@@ -494,6 +501,8 @@ def get_tool_counts(tools: dict[str, dict[str, Any]]) -> ToolCounts:
         jira_toolsets=len(JIRA_TOOLSETS),
         confluence_toolsets=len(CONFLUENCE_TOOLSETS),
         core_toolsets=len(DEFAULT_TOOLSETS),
+        bitbucket_tools=sum(name.startswith("bitbucket_") for name in tools),
+        bitbucket_toolsets=len(BITBUCKET_TOOLSETS),
     )
 
 
@@ -503,6 +512,7 @@ def build_toolset_docs(
     """Group introspected tools by the registered toolset definitions."""
     from mcp_atlassian.utils.toolsets import (
         ALL_TOOLSETS,
+        BITBUCKET_TOOLSETS,
         CONFLUENCE_TOOLSETS,
         DEFAULT_TOOLSETS,
         JIRA_TOOLSETS,
@@ -527,6 +537,7 @@ def build_toolset_docs(
     return {
         "jira": [toolsets_by_name[name] for name in JIRA_TOOLSETS],
         "confluence": [toolsets_by_name[name] for name in CONFLUENCE_TOOLSETS],
+        "bitbucket": [toolsets_by_name[name] for name in BITBUCKET_TOOLSETS],
         "legacy": [toolsets_by_name["legacy"]],
     }
 
@@ -757,6 +768,11 @@ COUNT_RULES = (
             re.IGNORECASE,
         ),
         "confluence_toolsets",
+    ),
+    CountRule(
+        "docs/tools-reference.mdx",
+        re.compile(r"\*\*Bitbucket Toolsets \((\d+)\):\*\*", re.IGNORECASE),
+        "bitbucket_toolsets",
     ),
     CountRule(
         "docs/tools-reference.mdx",

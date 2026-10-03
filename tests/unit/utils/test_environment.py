@@ -66,7 +66,10 @@ def env_scenarios():
 
 def _assert_service_availability(result, confluence_expected, jira_expected):
     """Helper to assert service availability."""
-    assert result == {"confluence": confluence_expected, "jira": jira_expected}
+    assert {"confluence": result["confluence"], "jira": result["jira"]} == {
+        "confluence": confluence_expected,
+        "jira": jira_expected,
+    }
 
 
 def _assert_authentication_logs(caplog, auth_type, services):
@@ -270,7 +273,7 @@ class TestGetAvailableServices:
             result = get_available_services()
 
             assert isinstance(result, dict)
-            assert set(result.keys()) == {"confluence", "jira"}
+            assert set(result.keys()) == {"confluence", "jira", "bitbucket"}
             assert all(isinstance(v, bool) for v in result.values())
 
     @pytest.mark.parametrize(
@@ -565,3 +568,46 @@ class TestMockEnvironmentCleanEnv:
         monkeypatch.setenv(var_name, "leaked-from-developer-shell")
         with MockEnvironment.clean_env():
             assert os.environ.get(var_name) is None
+
+
+class TestBitbucketAvailability:
+    """Bitbucket is available only with both BITBUCKET_URL and a personal token."""
+
+    def test_url_and_token_enable_bitbucket(self, monkeypatch):
+        with MockEnvironment.clean_env():
+            monkeypatch.setenv("BITBUCKET_URL", "https://bitbucket.company.com")
+            monkeypatch.setenv("BITBUCKET_PERSONAL_TOKEN", "token")
+
+            assert get_available_services()["bitbucket"] is True
+
+    @pytest.mark.parametrize(
+        "env",
+        [
+            pytest.param({}, id="nothing"),
+            pytest.param({"BITBUCKET_URL": "https://bb.company.com"}, id="url_only"),
+            pytest.param({"BITBUCKET_PERSONAL_TOKEN": "token"}, id="token_only"),
+        ],
+    )
+    def test_incomplete_config_disables_bitbucket(self, env, monkeypatch, caplog):
+        with MockEnvironment.clean_env():
+            for key, value in env.items():
+                monkeypatch.setenv(key, value)
+
+            assert get_available_services()["bitbucket"] is False
+            assert_log_contains(caplog, "INFO", "Bitbucket is not configured")
+
+    def test_oauth_enable_does_not_enable_bitbucket(self, monkeypatch):
+        with MockEnvironment.clean_env():
+            monkeypatch.setenv("ATLASSIAN_OAUTH_ENABLE", "true")
+
+            assert get_available_services()["bitbucket"] is False
+
+    def test_jira_and_confluence_unaffected_by_bitbucket(self, monkeypatch):
+        with MockEnvironment.clean_env():
+            monkeypatch.setenv("BITBUCKET_URL", "https://bitbucket.company.com")
+            monkeypatch.setenv("BITBUCKET_PERSONAL_TOKEN", "token")
+
+            result = get_available_services()
+
+            assert result["jira"] is False
+            assert result["confluence"] is False

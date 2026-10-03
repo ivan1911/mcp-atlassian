@@ -1,9 +1,9 @@
 ---
 title: "Tools Reference"
-description: "Overview of all 98 MCP tools for Jira and Confluence — organized by category with quick links"
+description: "Overview of all 99 MCP tools for Jira, Confluence and Bitbucket — organized by category with quick links"
 ---
 
-MCP Atlassian provides **98 tools** for interacting with Jira and Confluence. Tools are organized by category below.
+MCP Atlassian provides **99 tools** for interacting with Jira, Confluence and Bitbucket Data Center. Tools are organized by category below.
 
 ## Jira Tools
 
@@ -57,6 +57,16 @@ MCP Atlassian provides **98 tools** for interacting with Jira and Confluence. To
   </Card>
 </CardGroup>
 
+## Bitbucket Tools
+
+Bitbucket Data Center only (Bitbucket Cloud is not supported).
+
+<CardGroup cols={2}>
+  <Card title="Projects & Code" icon="code-branch" href="/docs/tools/bitbucket-code">
+    Projects, repositories, files, branches, commits, code search
+  </Card>
+</CardGroup>
+
 ## Tool Access Control
 
 ### Toolset Groups
@@ -97,6 +107,12 @@ Toolsets group related tools for easier management via `TOOLSETS` env var or `--
 | `confluence_templates` | No | `confluence_list_page_templates`, `confluence_get_page_template`, `confluence_create_page_from_template` |
 | `confluence_permissions` | No | `confluence_check_content_permissions`, `confluence_get_space_permissions` |
 
+**Bitbucket Toolsets (1):**
+
+| Toolset | Core | Tools |
+|---------|:----:|-------|
+| `bitbucket_projects` | Yes | `bitbucket_list_projects` |
+
 **Migration Toolsets (1):**
 
 | Toolset | Core | Purpose | Tools |
@@ -111,7 +127,7 @@ TOOLSETS=default,jira_agile,jira_attachments
 # Enable deprecated tools only while migrating to their replacements:
 TOOLSETS=legacy
 
-# Enable all toolsets (98 tools)
+# Enable all toolsets (99 tools)
 TOOLSETS=all
 
 # Command line

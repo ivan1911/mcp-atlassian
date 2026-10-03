@@ -21,6 +21,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from mcp_atlassian.bitbucket.config import BitbucketConfig
 from mcp_atlassian.confluence.config import ConfluenceConfig
 from mcp_atlassian.jira.config import JiraConfig
 from mcp_atlassian.utils.env import is_env_truthy
@@ -41,6 +42,7 @@ from mcp_atlassian.utils.toolsets import (
 )
 from mcp_atlassian.utils.urls import is_atlassian_cloud_url, validate_url_for_ssrf
 
+from .bitbucket import bitbucket_mcp
 from .client_storage import build_oauth_client_storage_from_env
 from .confluence import confluence_mcp
 from .context import MainAppContext
@@ -176,9 +178,22 @@ async def main_lifespan(app: FastMCP[MainAppContext]) -> AsyncIterator[dict[str,
         except Exception as e:
             logger.error(f"Failed to load Confluence configuration: {e}", exc_info=True)
 
+    loaded_bitbucket_config: BitbucketConfig | None = None
+    if services.get("bitbucket"):
+        try:
+            bitbucket_config = BitbucketConfig.from_env()
+            if bitbucket_config.is_auth_configured():
+                loaded_bitbucket_config = bitbucket_config
+                logger.info(
+                    "Bitbucket configuration loaded and authentication is configured."
+                )
+        except Exception as e:
+            logger.error(f"Failed to load Bitbucket configuration: {e}", exc_info=True)
+
     app_context = MainAppContext(
         full_jira_config=loaded_jira_config,
         full_confluence_config=loaded_confluence_config,
+        full_bitbucket_config=loaded_bitbucket_config,
         read_only=read_only,
         enabled_tools=enabled_tools,
         enabled_toolsets=enabled_toolsets,
@@ -332,6 +347,13 @@ class AtlassianMCP(ErrorPreservingFastMCP[MainAppContext]):
         app_lifespan_state = ctx["app_lifespan_state"]
         header_based_services = ctx["header_based_services"]
         tool_tags = tool_obj.tags
+
+        # Bitbucket is configured only from the environment (no header auth).
+        if "bitbucket" in tool_tags:
+            return bool(
+                app_lifespan_state
+                and app_lifespan_state.full_bitbucket_config is not None
+            )
 
         is_jira_tool = "jira" in tool_tags
         is_confluence_tool = "confluence" in tool_tags
@@ -921,6 +943,7 @@ main_mcp = AtlassianMCP(
 )
 main_mcp.mount(jira_mcp, namespace="jira")
 main_mcp.mount(confluence_mcp, namespace="confluence")
+main_mcp.mount(bitbucket_mcp, namespace="bitbucket")
 
 
 @main_mcp.custom_route("/healthz", methods=["GET"], include_in_schema=False)
