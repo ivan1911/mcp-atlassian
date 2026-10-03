@@ -2,7 +2,8 @@
 
 from typing import Any
 
-from ..base import ApiModel
+from mcp_atlassian.models.base import ApiModel
+
 from .common import self_link
 
 

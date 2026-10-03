@@ -1,13 +1,11 @@
 """Taking part in pull request review: comments and tasks."""
 
-from typing import Any, Literal
+from typing import Any
 
-from ..models.bitbucket import BitbucketComment, BitbucketParticipant
-from .client import API, BitbucketClient, segment
+from mcp_atlassian.models.bitbucket import BitbucketComment, BitbucketParticipant
 
-ReviewerStatus = Literal["approved", "needs_work", "unapproved"]
-LineType = Literal["ADDED", "REMOVED", "CONTEXT"]
-FileType = Literal["FROM", "TO"]
+from .client import API, BitbucketClient, quote_segment
+from .types import FileType, LineType, ReviewerStatus, TaskState
 
 
 def build_anchor(
@@ -16,27 +14,39 @@ def build_anchor(
     line_type: LineType | None,
     file_type: FileType | None,
 ) -> dict[str, Any] | None:
-    """Build an inline comment anchor for the pull request's effective diff.
+    """Build a comment anchor on the pull request's effective diff.
 
     Removed lines live on the old (FROM) side of the diff; added and context
     lines are addressed on the new (TO) side unless ``file_type`` says
     otherwise.
 
+    Args:
+        path: File path; without it the comment is a general comment.
+        line: Diff line for an inline comment; without it the comment is
+            anchored to the file as a whole.
+        line_type: ADDED, REMOVED or CONTEXT; required with ``line``.
+        file_type: FROM or TO; inferred from ``line_type`` when omitted.
+
+    Returns:
+        The anchor payload, or None for a general comment.
+
     Raises:
-        ValueError: If ``line`` is given without ``path``.
+        ValueError: If ``line`` is given without ``path`` or ``line_type``.
     """
     if line is not None and not path:
         raise ValueError("An inline comment on a line also needs the file 'path'.")
+    if line is not None and line_type is None:
+        raise ValueError(
+            "An inline comment needs 'line_type' (ADDED, REMOVED or CONTEXT): "
+            "the line number means a different line on each side of the diff."
+        )
     if not path:
         return None
     anchor: dict[str, Any] = {"path": path.strip("/")}
-    if line is not None:
-        effective_line_type = line_type or "ADDED"
+    if line is not None and line_type is not None:
         anchor["line"] = line
-        anchor["lineType"] = effective_line_type
-        anchor["fileType"] = file_type or (
-            "FROM" if effective_line_type == "REMOVED" else "TO"
-        )
+        anchor["lineType"] = line_type
+        anchor["fileType"] = file_type or ("FROM" if line_type == "REMOVED" else "TO")
     anchor["diffType"] = "EFFECTIVE"
     return anchor
 
@@ -59,16 +69,16 @@ class ReviewMixin(BitbucketClient):
         as_task: bool = False,
         pending: bool = False,
     ) -> BitbucketComment:
-        """Add a general, inline or reply comment, or a task.
+        """Add a general or inline comment, a reply, or a task.
 
         Args:
             project_key: Project key.
             repo_slug: Repository slug.
             pull_request_id: Pull request id.
             text: Comment text (Bitbucket markdown).
-            path: File path for a file or inline comment.
+            path: File path; alone it anchors the comment to the whole file.
             line: Diff line for an inline comment (needs ``path``).
-            line_type: ADDED, REMOVED or CONTEXT (default ADDED).
+            line_type: ADDED, REMOVED or CONTEXT (required with ``line``).
             file_type: FROM or TO (inferred from ``line_type``).
             parent_comment_id: Reply to this comment.
             as_task: Create a task (blocking comment).
@@ -100,11 +110,22 @@ class ReviewMixin(BitbucketClient):
         comment_id: int,
         *,
         text: str | None = None,
-        task_state: Literal["open", "resolved"] | None = None,
+        task_state: TaskState | None = None,
     ) -> BitbucketComment:
         """Edit a comment's text and/or resolve or reopen a task.
 
         The comment's current version is read first, as Bitbucket requires it.
+
+        Args:
+            project_key: Project key.
+            repo_slug: Repository slug.
+            pull_request_id: Pull request id.
+            comment_id: Comment or task id.
+            text: New text.
+            task_state: ``open`` or ``resolved`` for a task.
+
+        Returns:
+            The updated comment.
 
         Raises:
             ValueError: If neither ``text`` nor ``task_state`` is given.
@@ -125,10 +146,16 @@ class ReviewMixin(BitbucketClient):
     _current_user_slug: str | None = None
 
     def get_current_user_slug(self) -> str:
-        """Slug of the token's user, resolved once per fetcher.
+        """Slug of the token's user, resolved once per fetcher instance.
 
         Bitbucket reports the authenticated username in the ``X-AUSERNAME``
         response header; the slug used in URLs is looked up from it.
+
+        Returns:
+            The user slug.
+
+        Raises:
+            ValueError: If the username is not reported or not found.
         """
         if self._current_user_slug:
             return self._current_user_slug
@@ -172,7 +199,7 @@ class ReviewMixin(BitbucketClient):
         params = {"version": self._pr_version(pr_path, version)}
         response = self._request(
             "PUT",
-            f"{pr_path}/participants/{segment(slug)}",
+            f"{pr_path}/participants/{quote_segment(slug)}",
             params=params,
             json={"status": status.upper()},
         )

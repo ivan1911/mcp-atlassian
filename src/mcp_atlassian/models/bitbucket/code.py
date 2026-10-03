@@ -1,18 +1,12 @@
 """Bitbucket Data Center models for refs, commits and changed files."""
 
-from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import Field
 
-from ..base import ApiModel
+from mcp_atlassian.models.base import ApiModel
 
-
-def iso_from_millis(value: Any) -> str | None:
-    """Convert a Bitbucket epoch-milliseconds timestamp to ISO 8601 (UTC)."""
-    if not isinstance(value, int | float):
-        return None
-    return datetime.fromtimestamp(value / 1000, tz=timezone.utc).isoformat()
+from .common import iso_from_millis
 
 
 class BitbucketPerson(ApiModel):

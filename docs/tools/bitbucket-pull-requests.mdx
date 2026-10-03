@@ -122,7 +122,7 @@ Get pull request activity: comment threads, tasks, approvals, updates.
 
 ### Add Pull Request Comment
 
-Comment on a pull request: general, file, inline line, reply, or task.
+Comment on a pull request: general, inline, reply, task or pending comment.
 
 <Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
 
@@ -134,9 +134,9 @@ Comment on a pull request: general, file, inline line, reply, or task.
 | `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
 | `pull_request_id` | `integer` | Yes | Pull request id. |
 | `text` | `string` | Yes | Comment text in Bitbucket markdown. |
-| `path` | `string` | No | (Optional) File path: comments on the file, or on a line of it together with 'line'. |
+| `path` | `string` | No | (Optional) File path. Alone it anchors the comment to the whole file; with 'line' and 'line_type' it makes an inline comment. |
 | `line` | `integer` | No | (Optional) Line number in the diff for an inline comment: the new-file line for ADDED/CONTEXT lines, the old-file line for REMOVED lines (see the hunk headers of the pull request diff). |
-| `line_type` | `string` | No | (Optional) Kind of the commented diff line (default ADDED). |
+| `line_type` | `string` | No | Kind of the commented diff line; required with 'line'. ADDED ('+'), REMOVED ('-') or CONTEXT (' '). |
 | `file_type` | `string` | No | (Optional) Diff side: FROM (old) or TO (new). Inferred from line_type when omitted. |
 | `parent_comment_id` | `integer` | No | (Optional) Reply to this comment id. |
 | `as_task` | `boolean` | No | Create a task: a blocking comment that must be resolved. |

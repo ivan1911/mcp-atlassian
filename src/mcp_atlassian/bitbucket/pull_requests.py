@@ -2,19 +2,25 @@
 
 from typing import Any
 
-from ..models.bitbucket import (
+from mcp_atlassian.models.bitbucket import (
     BitbucketChange,
     BitbucketCommit,
+    BitbucketMergeStatus,
     BitbucketPage,
     BitbucketPullRequest,
     activity_from_api,
-    merge_status_from_api,
 )
-from .client import API, qualify_branch
-from .diff import DiffMixin
+
+from .client import API, BitbucketClient, qualify_branch
+from .types import (
+    ParticipantStatus,
+    PullRequestDirection,
+    PullRequestRole,
+    PullRequestState,
+)
 
 
-class PullRequestsMixin(DiffMixin):
+class PullRequestsMixin(BitbucketClient):
     """Pull request listing and reading."""
 
     def list_pull_requests(
@@ -22,8 +28,8 @@ class PullRequestsMixin(DiffMixin):
         project_key: str,
         repo_slug: str,
         *,
-        state: str = "OPEN",
-        direction: str = "INCOMING",
+        state: PullRequestState = "OPEN",
+        direction: PullRequestDirection = "INCOMING",
         target_branch: str | None = None,
         author: str | None = None,
         reviewer: str | None = None,
@@ -70,9 +76,9 @@ class PullRequestsMixin(DiffMixin):
     def get_my_pull_requests(
         self,
         *,
-        role: str | None = None,
-        state: str = "OPEN",
-        participant_status: str | None = None,
+        role: PullRequestRole | None = None,
+        state: PullRequestState = "OPEN",
+        participant_status: ParticipantStatus | None = None,
         start: int = 0,
         limit: int = 25,
     ) -> BitbucketPage:
@@ -124,7 +130,7 @@ class PullRequestsMixin(DiffMixin):
         path = self._pr_path(project_key, repo_slug, pull_request_id)
         pull_request = BitbucketPullRequest.from_api_response(self._get_json(path))
         if include_merge_status:
-            pull_request.merge_status = merge_status_from_api(
+            pull_request.merge_status = BitbucketMergeStatus.from_api_response(
                 self._get_json(f"{path}/merge") or {}
             )
         return pull_request
@@ -138,7 +144,18 @@ class PullRequestsMixin(DiffMixin):
         start: int = 0,
         limit: int = 100,
     ) -> BitbucketPage:
-        """List the files a pull request changes."""
+        """List the files a pull request changes.
+
+        Args:
+            project_key: Project key.
+            repo_slug: Repository slug.
+            pull_request_id: Pull request id.
+            start: Page start.
+            limit: Page size.
+
+        Returns:
+            A page of changed files with their change type.
+        """
         path = self._pr_path(project_key, repo_slug, pull_request_id)
         data = self._get_page(f"{path}/changes", start=start, limit=limit)
         return BitbucketPage.from_api_response(data, item_model=BitbucketChange)
@@ -152,7 +169,18 @@ class PullRequestsMixin(DiffMixin):
         start: int = 0,
         limit: int = 25,
     ) -> BitbucketPage:
-        """List the commits of a pull request, newest first."""
+        """List the commits of a pull request, newest first.
+
+        Args:
+            project_key: Project key.
+            repo_slug: Repository slug.
+            pull_request_id: Pull request id.
+            start: Page start.
+            limit: Page size.
+
+        Returns:
+            A page of commits.
+        """
         path = self._pr_path(project_key, repo_slug, pull_request_id)
         data = self._get_page(f"{path}/commits", start=start, limit=limit)
         return BitbucketPage.from_api_response(data, item_model=BitbucketCommit)
@@ -203,6 +231,16 @@ class PullRequestsMixin(DiffMixin):
 
         Comment activities carry the whole thread (replies, anchor, task
         state). Unknown activity kinds are passed through raw.
+
+        Args:
+            project_key: Project key.
+            repo_slug: Repository slug.
+            pull_request_id: Pull request id.
+            start: Page start.
+            limit: Page size.
+
+        Returns:
+            A page of simplified activity entries.
         """
         path = self._pr_path(project_key, repo_slug, pull_request_id)
         data = self._get_page(f"{path}/activities", start=start, limit=limit)

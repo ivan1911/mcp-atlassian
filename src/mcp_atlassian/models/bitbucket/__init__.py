@@ -5,11 +5,11 @@ from .comment import BitbucketComment, BitbucketCommentAnchor, activity_from_api
 from .common import BitbucketPage
 from .project import BitbucketProject
 from .pull_request import (
+    BitbucketMergeStatus,
     BitbucketParticipant,
     BitbucketPullRequest,
     BitbucketPullRequestRef,
     BitbucketUser,
-    merge_status_from_api,
 )
 from .repository import BitbucketRepository
 
@@ -27,6 +27,6 @@ __all__ = [
     "BitbucketPullRequestRef",
     "BitbucketUser",
     "activity_from_api",
-    "merge_status_from_api",
+    "BitbucketMergeStatus",
     "BitbucketRepository",
 ]

@@ -4,9 +4,9 @@ from typing import Any
 
 from pydantic import Field
 
-from ..base import ApiModel
-from .code import iso_from_millis
-from .common import self_link
+from mcp_atlassian.models.base import ApiModel
+
+from .common import format_veto, iso_from_millis, self_link
 
 
 class BitbucketUser(ApiModel):
@@ -74,6 +74,29 @@ class BitbucketPullRequestRef(ApiModel):
         )
 
 
+class BitbucketMergeStatus(ApiModel):
+    """Whether a pull request can be merged, and what blocks it."""
+
+    can_merge: bool = False
+    conflicted: bool = False
+    outcome: str | None = None
+    vetoes: list[str] = Field(default_factory=list)
+
+    @classmethod
+    def from_api_response(
+        cls, data: dict[str, Any], **kwargs: Any
+    ) -> "BitbucketMergeStatus":
+        """Build from a Bitbucket ``RestPullRequestMergeability`` response."""
+        return cls(
+            can_merge=bool(data.get("canMerge", False)),
+            conflicted=bool(data.get("conflicted", False)),
+            outcome=data.get("outcome"),
+            vetoes=[
+                format_veto(v) for v in data.get("vetoes") or [] if isinstance(v, dict)
+            ],
+        )
+
+
 class BitbucketPullRequest(ApiModel):
     """A request to merge a source branch into a target branch."""
 
@@ -93,7 +116,7 @@ class BitbucketPullRequest(ApiModel):
     open_task_count: int | None = None
     resolved_task_count: int | None = None
     url: str | None = None
-    merge_status: dict[str, Any] | None = None
+    merge_status: BitbucketMergeStatus | None = None
 
     @classmethod
     def from_api_response(
@@ -135,20 +158,3 @@ class BitbucketPullRequest(ApiModel):
     def project_key(self) -> str | None:
         """Project key of the target repository."""
         return self.target.project_key if self.target else None
-
-
-def merge_status_from_api(data: dict[str, Any]) -> dict[str, Any]:
-    """Simplify a Bitbucket ``RestPullRequestMergeability`` response."""
-    vetoes = []
-    for veto in data.get("vetoes") or []:
-        summary = veto.get("summaryMessage") or ""
-        detail = veto.get("detailedMessage") or ""
-        vetoes.append(
-            f"{summary}: {detail}" if summary and detail else summary or detail
-        )
-    return {
-        "can_merge": bool(data.get("canMerge", False)),
-        "conflicted": bool(data.get("conflicted", False)),
-        "outcome": data.get("outcome"),
-        "vetoes": vetoes,
-    }

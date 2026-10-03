@@ -1,10 +1,25 @@
 """Shared Bitbucket Data Center models: paged results and links."""
 
+from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import Field
 
-from ..base import ApiModel
+from mcp_atlassian.models.base import ApiModel
+
+
+def iso_from_millis(value: Any) -> str | None:
+    """Convert a Bitbucket epoch-milliseconds timestamp to ISO 8601 (UTC)."""
+    if not isinstance(value, int | float):
+        return None
+    return datetime.fromtimestamp(value / 1000, tz=timezone.utc).isoformat()
+
+
+def format_veto(veto: dict[str, Any]) -> str:
+    """Render a merge veto as ``summary: detail`` (either part may be absent)."""
+    summary = veto.get("summaryMessage") or ""
+    detail = veto.get("detailedMessage") or ""
+    return f"{summary}: {detail}" if summary and detail else summary or detail
 
 
 def self_link(data: dict[str, Any]) -> str | None:

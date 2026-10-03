@@ -1,7 +1,12 @@
 """Bitbucket project and repository operations."""
 
-from ..models.bitbucket import BitbucketPage, BitbucketProject, BitbucketRepository
-from .client import API, BitbucketApiError, BitbucketClient, segment
+from mcp_atlassian.models.bitbucket import (
+    BitbucketPage,
+    BitbucketProject,
+    BitbucketRepository,
+)
+
+from .client import API, BitbucketApiError, BitbucketClient, quote_segment
 
 
 class ProjectsMixin(BitbucketClient):
@@ -44,7 +49,7 @@ class ProjectsMixin(BitbucketClient):
         """
         key = self._project_key(project_key) if project_key else None
         if key and not name:
-            path = f"{API}/projects/{segment(key)}/repos"
+            path = f"{API}/projects/{quote_segment(key)}/repos"
             params: dict[str, str | None] = {}
         else:
             path = f"{API}/repos"
@@ -73,12 +78,21 @@ class ProjectsMixin(BitbucketClient):
         )
 
     def get_default_branch(self, project_key: str, repo_slug: str) -> str | None:
-        """Return the default branch name, or None for an empty repository."""
+        """Return the default branch name, or None for an empty repository.
+
+        Args:
+            project_key: Project key.
+            repo_slug: Repository slug.
+
+        Returns:
+            The default branch display name; None when Bitbucket has none
+            (an empty body or a 404 for an empty repository).
+        """
         path = self._repo_path(project_key, repo_slug)
         try:
             ref = self._get_json(f"{path}/default-branch")
         except BitbucketApiError as e:
-            if e.status in (204, 404):
+            if e.status == 404:
                 return None
             raise
         display_id = ref.get("displayId") if isinstance(ref, dict) else None

@@ -220,15 +220,23 @@ def _implicit_toolsets() -> set[str]:
     return {name for name, defn in ALL_TOOLSETS.items() if not defn.explicit_only}
 
 
+def _warn_default_will_change() -> None:
+    logger.warning(
+        "TOOLSETS is not set — currently defaults to all toolsets. "
+        f"In v0.22.0, the default will change to {len(DEFAULT_TOOLSETS)} core "
+        "toolsets only. Set TOOLSETS=all explicitly to preserve current behavior."
+    )
+
+
 def get_enabled_toolsets() -> set[str]:
     """Parse the TOOLSETS env var into a set of enabled toolset names.
 
-    Supports keywords 'all' (all 31 non-explicit-only toolsets) and 'default'
-    (11 defaults),
-    plus comma-separated specific toolset names. Case-insensitive for keywords.
+    Supports keywords 'all' (every toolset not marked ``explicit_only``) and
+    'default' (DEFAULT_TOOLSETS), plus comma-separated specific toolset names.
+    Case-insensitive for keywords.
 
     When TOOLSETS is unset or empty, returns all toolsets with a deprecation
-    warning. In v0.22.0 the default will change to DEFAULT_TOOLSETS (11 core).
+    warning. In v0.22.0 the default will change to DEFAULT_TOOLSETS.
     Set ``TOOLSETS=all`` explicitly to preserve current behavior.
 
     Toolsets marked ``explicit_only`` are never enabled by an unset TOOLSETS,
@@ -240,21 +248,17 @@ def get_enabled_toolsets() -> set[str]:
         names are given, returns an empty set (fail-closed).
 
     Examples:
-        TOOLSETS unset -> all 31 toolsets (with deprecation warning)
-        TOOLSETS="" -> all 31 toolsets (with deprecation warning)
-        TOOLSETS="all" -> all 31 names
-        TOOLSETS="default" -> 11 default names
+        TOOLSETS unset -> all toolsets (with deprecation warning)
+        TOOLSETS="" -> all toolsets (with deprecation warning)
+        TOOLSETS="all" -> all toolset names
+        TOOLSETS="default" -> DEFAULT_TOOLSETS
         TOOLSETS="default,jira_agile" -> defaults + jira_agile
         TOOLSETS="typo_name" -> set() (fail-closed)
     """
     toolsets_str = os.getenv("TOOLSETS")
     if not toolsets_str:
         logger.info("TOOLSETS not set — all toolsets enabled.")
-        logger.warning(
-            "TOOLSETS is not set — currently defaults to all toolsets. "
-            "In v0.22.0, the default will change to 6 core toolsets only. "
-            "Set TOOLSETS=all explicitly to preserve current behavior."
-        )
+        _warn_default_will_change()
         return _implicit_toolsets()
 
     # Split by comma and strip whitespace, filter empty tokens
@@ -263,11 +267,7 @@ def get_enabled_toolsets() -> set[str]:
 
     if not tokens:
         logger.info("TOOLSETS empty — all toolsets enabled.")
-        logger.warning(
-            "TOOLSETS is not set — currently defaults to all toolsets. "
-            "In v0.22.0, the default will change to 6 core toolsets only. "
-            "Set TOOLSETS=all explicitly to preserve current behavior."
-        )
+        _warn_default_will_change()
         return _implicit_toolsets()
 
     result: set[str] = set()

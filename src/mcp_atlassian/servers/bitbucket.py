@@ -2,11 +2,21 @@
 
 import json
 import logging
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 
 from fastmcp import Context
 from pydantic import Field
 
+from mcp_atlassian.bitbucket.types import (
+    FileType,
+    LineType,
+    ParticipantStatus,
+    PullRequestDirection,
+    PullRequestRole,
+    PullRequestState,
+    ReviewerStatus,
+    TaskState,
+)
 from mcp_atlassian.servers.dependencies import get_bitbucket_fetcher
 from mcp_atlassian.servers.error_handling import ErrorPreservingFastMCP
 from mcp_atlassian.utils.decorators import check_write_access
@@ -476,7 +486,7 @@ async def get_commit_diff(
 
 PullRequestIdParam = Annotated[int, Field(description="Pull request id.", ge=1)]
 PrStateParam = Annotated[
-    Literal["OPEN", "MERGED", "DECLINED", "ALL"],
+    PullRequestState,
     Field(description="Pull request state.", default="OPEN"),
 ]
 
@@ -491,7 +501,7 @@ async def list_pull_requests(
     repo_slug: RepoSlugParam,
     state: PrStateParam = "OPEN",
     direction: Annotated[
-        Literal["INCOMING", "OUTGOING"],
+        PullRequestDirection,
         Field(
             description=(
                 "INCOMING: pull requests into this repository; OUTGOING: from it."
@@ -568,7 +578,7 @@ async def list_pull_requests(
 async def get_my_pull_requests(
     ctx: Context,
     role: Annotated[
-        Literal["AUTHOR", "REVIEWER", "PARTICIPANT"] | None,
+        PullRequestRole | None,
         Field(
             description="(Optional) Only pull requests where I have this role.",
             default=None,
@@ -576,7 +586,7 @@ async def get_my_pull_requests(
     ] = None,
     state: PrStateParam = "OPEN",
     participant_status: Annotated[
-        Literal["APPROVED", "UNAPPROVED", "NEEDS_WORK"] | None,
+        ParticipantStatus | None,
         Field(
             description="(Optional) Only pull requests where my reviewer status is this.",
             default=None,
@@ -816,8 +826,8 @@ async def add_pull_request_comment(
         str | None,
         Field(
             description=(
-                "(Optional) File path: comments on the file, or on a line of it "
-                "together with 'line'."
+                "(Optional) File path. Alone it anchors the comment to the whole "
+                "file; with 'line' and 'line_type' it makes an inline comment."
             ),
             default=None,
         ),
@@ -835,14 +845,17 @@ async def add_pull_request_comment(
         ),
     ] = None,
     line_type: Annotated[
-        Literal["ADDED", "REMOVED", "CONTEXT"] | None,
+        LineType | None,
         Field(
-            description="(Optional) Kind of the commented diff line (default ADDED).",
+            description=(
+                "Kind of the commented diff line; required with 'line'. "
+                "ADDED ('+'), REMOVED ('-') or CONTEXT (' ')."
+            ),
             default=None,
         ),
     ] = None,
     file_type: Annotated[
-        Literal["FROM", "TO"] | None,
+        FileType | None,
         Field(
             description=(
                 "(Optional) Diff side: FROM (old) or TO (new). Inferred from "
@@ -873,7 +886,7 @@ async def add_pull_request_comment(
         ),
     ] = False,
 ) -> str:
-    """Comment on a pull request: general, file, inline line, reply, or task.
+    """Comment on a pull request: general, inline, reply, task or pending comment.
 
     Args:
         ctx: The FastMCP context.
@@ -925,7 +938,7 @@ async def update_pull_request_comment(
         Field(description="(Optional) New comment text.", default=None, min_length=1),
     ] = None,
     task_state: Annotated[
-        Literal["open", "resolved"] | None,
+        TaskState | None,
         Field(
             description="(Optional) For a task: 'resolved' or 'open' (reopen).",
             default=None,
@@ -1267,7 +1280,7 @@ async def create_branch(
 
 
 ReviewerStatusParam = Annotated[
-    Literal["approved", "needs_work", "unapproved"],
+    ReviewerStatus,
     Field(description="Reviewer status to set."),
 ]
 
@@ -1316,7 +1329,7 @@ async def publish_review(
     repo_slug: RepoSlugParam,
     pull_request_id: PullRequestIdParam,
     status: Annotated[
-        Literal["approved", "needs_work", "unapproved"] | None,
+        ReviewerStatus | None,
         Field(
             description="(Optional) Reviewer status to set when publishing.",
             default=None,

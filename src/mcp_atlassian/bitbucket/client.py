@@ -2,26 +2,30 @@
 
 import logging
 import os
+from types import SimpleNamespace
 from typing import Any
 from urllib.parse import quote
 
 from atlassian import Bitbucket
 from requests import Response
 
-from ..utils.http import (
+from mcp_atlassian.models.bitbucket.common import format_veto
+from mcp_atlassian.utils.http import (
     configure_circuit_breaker,
     configure_concurrency,
     configure_rate_limit,
     configure_retry,
     format_rate_limit_error,
 )
-from ..utils.logging import log_config_param, mask_sensitive
-from ..utils.proxy import apply_proxy_configuration
-from ..utils.ssl import configure_ssl_verification
-from ..utils.ssrf_adapter import mount_ssrf_pinning
-from ..utils.urls import make_ssrf_redirect_hook
-from ..utils.user_agent import get_default_user_agent
+from mcp_atlassian.utils.logging import log_config_param, mask_sensitive
+from mcp_atlassian.utils.proxy import apply_proxy_configuration
+from mcp_atlassian.utils.ssl import configure_ssl_verification
+from mcp_atlassian.utils.ssrf_adapter import mount_ssrf_pinning
+from mcp_atlassian.utils.urls import make_ssrf_redirect_hook
+from mcp_atlassian.utils.user_agent import get_default_user_agent
+
 from .config import BitbucketConfig
+from .unified_diff import TRUNCATION_NOTICE, diff_params, render_unified_diff
 
 logger = logging.getLogger("mcp-atlassian.bitbucket")
 
@@ -72,9 +76,7 @@ def _bitbucket_messages(errors: list[dict[str, Any]]) -> list[str]:
         if error.get("message"):
             messages.append(str(error["message"]))
         for veto in error.get("vetoes") or []:
-            summary = veto.get("summaryMessage") or ""
-            detail = veto.get("detailedMessage") or ""
-            reason = f"{summary}: {detail}" if summary and detail else summary or detail
+            reason = format_veto(veto)
             if reason:
                 messages.append(f"veto: {reason}")
     return messages
@@ -85,8 +87,10 @@ def _raise_for_status(response: Response) -> None:
     if status < 400:
         return
     if status == 429:
+        # format_rate_limit_error reads ``.response`` off an HTTPError-like object.
+        http_error = SimpleNamespace(response=response)
         raise BitbucketApiError(
-            status, format_rate_limit_error(_HttpErr(response), service="Bitbucket")
+            status, format_rate_limit_error(http_error, service="Bitbucket")
         )
     errors = _bitbucket_errors(response)
     if status == 409 and any(
@@ -98,19 +102,12 @@ def _raise_for_status(response: Response) -> None:
     raise BitbucketApiError(status, f"{hint} {details}".strip())
 
 
-class _HttpErr:
-    """Adapter giving ``format_rate_limit_error`` the ``.response`` it expects."""
-
-    def __init__(self, response: Response) -> None:
-        self.response = response
-
-
-def segment(value: str) -> str:
+def quote_segment(value: str) -> str:
     """Quote a value for use as a single URL path segment."""
     return quote(value, safe="")
 
 
-def file_path(path: str) -> str:
+def quote_path(path: str) -> str:
     """Quote a repository file path, keeping ``/`` separators."""
     return quote(path.strip("/"), safe="/")
 
@@ -221,13 +218,26 @@ class BitbucketClient:
         allowed = self.config.allowed_project_keys
         return allowed is None or (project_key or "").upper() in allowed
 
-    def _repo_path(self, project_key: str, repo_slug: str) -> str:
-        """API path of a repository, after enforcing the projects filter."""
+    def _repo_path(self, project_key: str, repo_slug: str, *, api: str = API) -> str:
+        """Path of a repository under ``api``, after enforcing the projects filter.
+
+        Args:
+            project_key: Project key.
+            repo_slug: Repository slug.
+            api: REST API root, e.g. ``rest/branch-utils/latest``.
+
+        Returns:
+            ``{api}/projects/{KEY}/repos/{slug}``.
+
+        Raises:
+            ValueError: If the project is outside the filter or the slug is
+                empty. Raised before any request is made.
+        """
         key = self._project_key(project_key)
         slug = repo_slug.strip()
         if not slug:
             raise ValueError("repo_slug must not be empty.")
-        return f"{API}/projects/{segment(key)}/repos/{segment(slug)}"
+        return f"{api}/projects/{quote_segment(key)}/repos/{quote_segment(slug)}"
 
     def _pr_path(self, project_key: str, repo_slug: str, pull_request_id: int) -> str:
         """API path of a pull request, after enforcing the projects filter."""
@@ -299,3 +309,36 @@ class BitbucketClient:
     ) -> dict[str, Any]:
         """GET one page of a paged Bitbucket collection."""
         return self._get_json(path, {**(params or {}), "start": start, "limit": limit})
+
+    def _render_diff(
+        self,
+        url_path: str,
+        title: str,
+        *,
+        path: str | None,
+        context_lines: int | None,
+        ignore_whitespace: bool,
+    ) -> str:
+        """Fetch a JSON diff and render it as unified text under a header line.
+
+        Args:
+            url_path: Diff endpoint path, e.g. ``.../commits/{id}/diff``.
+            title: Header text, e.g. ``Diff of commit abc``.
+            path: Only this file.
+            context_lines: Lines of context around changes.
+            ignore_whitespace: Ignore whitespace-only changes.
+
+        Returns:
+            ``# <title> (<n> files)``, a truncation notice when Bitbucket cut
+            the diff, then the unified diff.
+        """
+        suffix = f"/{quote_path(path)}" if path and path.strip("/") else ""
+        data = self._get_json(
+            f"{url_path}{suffix}", diff_params(context_lines, ignore_whitespace)
+        )
+        text, count, truncated = render_unified_diff(data or {})
+        noun = "file" if count == 1 else "files"
+        header = [f"# {title} ({count} {noun})"]
+        if truncated:
+            header.append(TRUNCATION_NOTICE)
+        return "\n".join(header) + "\n" + text

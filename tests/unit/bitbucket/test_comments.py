@@ -114,6 +114,14 @@ class TestAddComment:
         assert request.body == {"text": "Add tests", "severity": "BLOCKER"}
         assert result["is_task"] is True
 
+    async def test_line_without_line_type_is_rejected(self, bb, fake_bitbucket):
+        message = await bb.call_error(
+            "bitbucket_add_pull_request_comment", **args(text="x", path="a.py", line=3)
+        )
+
+        assert "line_type" in message
+        assert fake_bitbucket.requests == []
+
     async def test_line_without_path_is_rejected(self, bb, fake_bitbucket):
         message = await bb.call_error(
             "bitbucket_add_pull_request_comment", **args(text="x", line=3)

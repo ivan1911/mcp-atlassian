@@ -29,13 +29,11 @@ class BitbucketFetcher(
     - ProjectsMixin: projects and repositories
     - CodeMixin: files, branches, tags and commits
     - DiffMixin: commit diffs as unified text
-    - PullRequestsMixin: finding and reading pull requests
-    - ReviewMixin: pull request comments and tasks
-    - ManageMixin: create, update, merge, decline, reopen; create branches
-    - SearchMixin: code search (unofficial endpoint)
-    - PullRequestsMixin: finding and reading pull requests
-    - ReviewMixin: pull request comments and tasks
-    - ManageMixin: create, update, merge, decline, reopen; create branches
+    - PullRequestsMixin: finding and reading pull requests, their diffs and
+      activity
+    - ReviewMixin: comments, tasks, reviewer status and pending review
+    - ManageMixin: create, update, merge, decline, reopen and delete pull
+      requests; create and delete branches
     - SearchMixin: code search (unofficial endpoint)
     """
 

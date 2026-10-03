@@ -4,8 +4,8 @@ import os
 from dataclasses import dataclass
 from typing import Literal
 
-from ..utils.env import get_custom_headers, is_env_ssl_verify
-from ..utils.proxy import get_proxy_settings_from_env
+from mcp_atlassian.utils.env import get_custom_headers, is_env_ssl_verify
+from mcp_atlassian.utils.proxy import get_proxy_settings_from_env
 
 DEFAULT_TIMEOUT = 75
 
@@ -95,5 +95,9 @@ class BitbucketConfig:
         )
 
     def is_auth_configured(self) -> bool:
-        """Return True when a personal token is available."""
+        """Return whether the configuration can authenticate.
+
+        Returns:
+            True when both the URL and a personal token are set.
+        """
         return bool(self.url and self.personal_token)

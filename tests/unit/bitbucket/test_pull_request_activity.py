@@ -122,6 +122,35 @@ class TestPullRequestActivity:
             "created": "2023-11-14T22:13:20+00:00",
         }
 
+    async def test_anchor_from_activity_when_comment_has_none(self, bb, fake_bitbucket):
+        fake_bitbucket.add(
+            "GET",
+            f"{PR}/activities",
+            page(
+                [
+                    activity(
+                        4,
+                        "COMMENTED",
+                        commentAction="ADDED",
+                        comment=comment_payload(43, "Off by one"),
+                        commentAnchor=inline_anchor(
+                            "src/loop.py", 7, "REMOVED", "FROM"
+                        ),
+                    )
+                ]
+            ),
+        )
+
+        result = await bb.call("bitbucket_get_pull_request_activity", **args())
+
+        (entry,) = result["values"]
+        assert entry["comment"]["anchor"] == {
+            "path": "src/loop.py",
+            "line": 7,
+            "line_type": "REMOVED",
+            "file_type": "FROM",
+        }
+
     async def test_unknown_activity_is_passed_through(self, bb, fake_bitbucket):
         weird = activity(9, "AUTO_MERGE_REQUESTED", pluginData={"x": 1})
         fake_bitbucket.add("GET", f"{PR}/activities", page([weird]))

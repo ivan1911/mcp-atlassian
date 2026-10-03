@@ -2,13 +2,14 @@
 
 from typing import Any
 
-from ..models.bitbucket import (
+from mcp_atlassian.models.bitbucket import (
     BitbucketChange,
     BitbucketCommit,
     BitbucketPage,
     BitbucketRef,
 )
-from .client import BitbucketClient, file_path, segment
+
+from .client import BitbucketClient, quote_path, quote_segment
 
 DEFAULT_FILE_LINE_LIMIT = 1000
 # Bytes inspected when deciding whether a file is binary.
@@ -53,7 +54,7 @@ class CodeMixin(BitbucketClient):
             ValueError: If ``path`` is a file rather than a directory.
         """
         repo = self._repo_path(project_key, repo_slug)
-        suffix = f"/{file_path(path)}" if path.strip("/") else ""
+        suffix = f"/{quote_path(path)}" if path.strip("/") else ""
         params = {"at": at}
         if recursive:
             data = self._get_page(
@@ -114,7 +115,7 @@ class CodeMixin(BitbucketClient):
         """
         repo = self._repo_path(project_key, repo_slug)
         response = self._request(
-            "GET", f"{repo}/raw/{file_path(path)}", params={"at": at}, accept="*/*"
+            "GET", f"{repo}/raw/{quote_path(path)}", params={"at": at}, accept="*/*"
         )
         raw = response.content
         result: dict[str, Any] = {"path": path.strip("/")}
@@ -151,7 +152,18 @@ class CodeMixin(BitbucketClient):
         start: int = 0,
         limit: int = 25,
     ) -> BitbucketPage:
-        """List branches, most recently modified first."""
+        """List branches, most recently modified first.
+
+        Args:
+            project_key: Project key.
+            repo_slug: Repository slug.
+            filter_text: Only branches whose name contains this text.
+            start: Page start.
+            limit: Page size.
+
+        Returns:
+            A page of branches; the default branch has ``is_default``.
+        """
         repo = self._repo_path(project_key, repo_slug)
         data = self._get_page(
             f"{repo}/branches",
@@ -170,7 +182,18 @@ class CodeMixin(BitbucketClient):
         start: int = 0,
         limit: int = 25,
     ) -> BitbucketPage:
-        """List tags, most recently modified first."""
+        """List tags, most recently modified first.
+
+        Args:
+            project_key: Project key.
+            repo_slug: Repository slug.
+            filter_text: Only tags whose name contains this text.
+            start: Page start.
+            limit: Page size.
+
+        Returns:
+            A page of tags.
+        """
         repo = self._repo_path(project_key, repo_slug)
         data = self._get_page(
             f"{repo}/tags",
@@ -234,7 +257,7 @@ class CodeMixin(BitbucketClient):
             The commit with ``changes``.
         """
         repo = self._repo_path(project_key, repo_slug)
-        commit_path = f"{repo}/commits/{segment(commit_id.strip())}"
+        commit_path = f"{repo}/commits/{quote_segment(commit_id.strip())}"
         commit = BitbucketCommit.from_api_response(self._get_json(commit_path))
         changes = self._get_page(f"{commit_path}/changes", limit=max_changes)
         commit.changes = [

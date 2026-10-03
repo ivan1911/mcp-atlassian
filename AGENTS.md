@@ -13,7 +13,7 @@
 | `  ├─ confluence/` | Confluence client + mixins (pages, search, analytics, …) |
 | `  ├─ bitbucket/` | Bitbucket Data Center client + mixins (PAT only, no Cloud) |
 | `  ├─ models/` | Pydantic v2 data models (`ApiModel` base) |
-| `  ├─ servers/` | FastMCP server instances (`jira_mcp`, `confluence_mcp`) |
+| `  ├─ servers/` | FastMCP server instances (`jira_mcp`, `confluence_mcp`, `bitbucket_mcp`) |
 | `  ├─ preprocessing/` | Content conversion (ADF/Storage → Markdown) |
 | `  └─ utils/` | Shared utilities (auth, logging, SSL, decorators) |
 | `tests/` | Pytest suite — unit, integration, real-API validation |
@@ -26,7 +26,7 @@
 - **Mixin composition**: `JiraFetcher` and `ConfluenceFetcher` are composed from the mixins listed in their `__init__.py`; client inheritance is transitive through mixins.
 - **FastMCP servers**: `servers/main.py` → lifespan → dependency injection via `get_jira_fetcher(ctx)` / `get_confluence_fetcher(ctx)` / `get_bitbucket_fetcher(ctx)`.
 - **Tool naming**: `{service}_{action}_{target}` (e.g., `jira_create_issue`, `confluence_get_page`).
-- **Config**: Environment-based `from_env()` factory on `JiraConfig` / `ConfluenceConfig` dataclasses.
+- **Config**: Environment-based `from_env()` factory on `JiraConfig` / `ConfluenceConfig` / `BitbucketConfig` dataclasses.
 - **Auth**: Basic (Cloud + Server/DC), PAT (Server/DC), OAuth 2.0 (Cloud + Server/DC) — with multi-tenant header support.
 - **Models**: All extend `ApiModel` → `from_api_response()` + `to_simplified_dict()`.
 

@@ -4,8 +4,9 @@ from typing import Any
 
 from pydantic import Field
 
-from ..base import ApiModel
-from .code import iso_from_millis
+from mcp_atlassian.models.base import ApiModel
+
+from .common import iso_from_millis
 
 
 class BitbucketCommentAnchor(ApiModel):
@@ -128,9 +129,12 @@ def activity_from_api(data: dict[str, Any]) -> dict[str, Any]:
     if action == "COMMENTED" and isinstance(data.get("comment"), dict):
         if data.get("commentAction"):
             result["comment_action"] = data["commentAction"]
-        result["comment"] = BitbucketComment.from_api_response(
-            data["comment"]
-        ).to_simplified_dict()
+        comment = BitbucketComment.from_api_response(data["comment"])
+        # Some versions put the inline anchor on the activity, not the comment.
+        activity_anchor = data.get("commentAnchor")
+        if comment.anchor is None and isinstance(activity_anchor, dict):
+            comment.anchor = BitbucketCommentAnchor.from_api_response(activity_anchor)
+        result["comment"] = comment.to_simplified_dict()
     elif action == "RESCOPED":
         for side in ("added", "removed"):
             commits = (data.get(side) or {}).get("commits") or []
