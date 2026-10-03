@@ -862,6 +862,16 @@ async def add_pull_request_comment(
             default=False,
         ),
     ] = False,
+    pending: Annotated[
+        bool,
+        Field(
+            description=(
+                "Create a pending comment, visible only to you until you publish "
+                "the review with bitbucket_publish_review."
+            ),
+            default=False,
+        ),
+    ] = False,
 ) -> str:
     """Comment on a pull request: general, file, inline line, reply, or task.
 
@@ -877,6 +887,7 @@ async def add_pull_request_comment(
         file_type: FROM or TO.
         parent_comment_id: Comment to reply to.
         as_task: Create a task.
+        pending: Create a pending comment.
 
     Returns:
         JSON of the created comment.
@@ -893,6 +904,7 @@ async def add_pull_request_comment(
         file_type=file_type,
         parent_comment_id=parent_comment_id,
         as_task=as_task,
+        pending=pending,
     )
     return _to_json(comment.to_simplified_dict())
 
@@ -1252,3 +1264,85 @@ async def create_branch(
     fetcher = await get_bitbucket_fetcher(ctx)
     branch = fetcher.create_branch(project_key, repo_slug, name, start_point)
     return _to_json(branch.to_simplified_dict())
+
+
+ReviewerStatusParam = Annotated[
+    Literal["approved", "needs_work", "unapproved"],
+    Field(description="Reviewer status to set."),
+]
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "write", "toolset:bitbucket_pr_review"},
+    annotations={"title": "Set Reviewer Status", "destructiveHint": False},
+)
+@check_write_access
+async def set_reviewer_status(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    pull_request_id: PullRequestIdParam,
+    status: ReviewerStatusParam,
+    version: VersionParam = None,
+) -> str:
+    """Set my reviewer status on a pull request: approved, needs_work, unapproved.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        pull_request_id: Pull request id.
+        status: Reviewer status.
+        version: Expected pull request version.
+
+    Returns:
+        JSON participant with the new status.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    participant = fetcher.set_reviewer_status(
+        project_key, repo_slug, pull_request_id, status, version=version
+    )
+    return _to_json(participant.to_simplified_dict())
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "write", "toolset:bitbucket_pr_review"},
+    annotations={"title": "Publish Review", "destructiveHint": False},
+)
+@check_write_access
+async def publish_review(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    pull_request_id: PullRequestIdParam,
+    status: Annotated[
+        Literal["approved", "needs_work", "unapproved"] | None,
+        Field(
+            description="(Optional) Reviewer status to set when publishing.",
+            default=None,
+        ),
+    ] = None,
+    comment: Annotated[
+        str | None,
+        Field(description="(Optional) Summary comment for the review.", default=None),
+    ] = None,
+) -> str:
+    """Publish my pending comments on a pull request as one review.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        pull_request_id: Pull request id.
+        status: Reviewer status to set.
+        comment: Summary comment.
+
+    Returns:
+        JSON ``{"published": true, "status": ...}``.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    return _to_json(
+        fetcher.publish_review(
+            project_key, repo_slug, pull_request_id, status=status, comment=comment
+        )
+    )

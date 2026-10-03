@@ -2,9 +2,10 @@
 
 from typing import Any, Literal
 
-from ..models.bitbucket import BitbucketComment
-from .client import BitbucketClient
+from ..models.bitbucket import BitbucketComment, BitbucketParticipant
+from .client import API, BitbucketClient, segment
 
+ReviewerStatus = Literal["approved", "needs_work", "unapproved"]
 LineType = Literal["ADDED", "REMOVED", "CONTEXT"]
 FileType = Literal["FROM", "TO"]
 
@@ -120,3 +121,97 @@ class ReviewMixin(BitbucketClient):
             body["state"] = task_state.upper()
         response = self._request("PUT", comment_path, json=body)
         return BitbucketComment.from_api_response(response.json())
+
+    _current_user_slug: str | None = None
+
+    def get_current_user_slug(self) -> str:
+        """Slug of the token's user, resolved once per fetcher.
+
+        Bitbucket reports the authenticated username in the ``X-AUSERNAME``
+        response header; the slug used in URLs is looked up from it.
+        """
+        if self._current_user_slug:
+            return self._current_user_slug
+        response = self._request("GET", f"{API}/application-properties")
+        username = response.headers.get("X-AUSERNAME")
+        if not username:
+            raise ValueError(
+                "Could not determine the Bitbucket user of the token "
+                "(no X-AUSERNAME header)."
+            )
+        users = self._get_json(f"{API}/users", {"filter": username, "limit": 100})
+        for candidate in (users or {}).get("values") or []:
+            if str(candidate.get("name", "")).lower() == username.lower():
+                self._current_user_slug = str(candidate["slug"])
+                return self._current_user_slug
+        raise ValueError(f"Bitbucket user '{username}' not found.")
+
+    def set_reviewer_status(
+        self,
+        project_key: str,
+        repo_slug: str,
+        pull_request_id: int,
+        status: ReviewerStatus,
+        *,
+        version: int | None = None,
+    ) -> BitbucketParticipant:
+        """Set the token user's reviewer status on a pull request.
+
+        Args:
+            project_key: Project key.
+            repo_slug: Repository slug.
+            pull_request_id: Pull request id.
+            status: approved, needs_work or unapproved.
+            version: Expected pull request version (read when omitted).
+
+        Returns:
+            The updated participant.
+        """
+        pr_path = self._pr_path(project_key, repo_slug, pull_request_id)
+        slug = self.get_current_user_slug()
+        params = {"version": self._pr_version(pr_path, version)}
+        response = self._request(
+            "PUT",
+            f"{pr_path}/participants/{segment(slug)}",
+            params=params,
+            json={"status": status.upper()},
+        )
+        return BitbucketParticipant.from_api_response(response.json())
+
+    def publish_review(
+        self,
+        project_key: str,
+        repo_slug: str,
+        pull_request_id: int,
+        *,
+        status: ReviewerStatus | None = None,
+        comment: str | None = None,
+    ) -> dict[str, Any]:
+        """Publish the token user's pending comments as one review.
+
+        Args:
+            project_key: Project key.
+            repo_slug: Repository slug.
+            pull_request_id: Pull request id.
+            status: Optionally set the reviewer status at the same time.
+            comment: Optional summary comment.
+
+        Returns:
+            ``{"published": True, "status": ...}``.
+        """
+        pr_path = self._pr_path(project_key, repo_slug, pull_request_id)
+        body: dict[str, Any] = {}
+        if status:
+            body["participantStatus"] = status.upper()
+        if comment:
+            body["commentText"] = comment
+        response = self._request("PUT", f"{pr_path}/review", json=body)
+        participant = (
+            BitbucketParticipant.from_api_response(response.json())
+            if response.content
+            else None
+        )
+        return {
+            "published": True,
+            "status": participant.status if participant else status,
+        }

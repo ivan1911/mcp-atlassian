@@ -140,6 +140,7 @@ Comment on a pull request: general, file, inline line, reply, or task.
 | `file_type` | `string` | No | (Optional) Diff side: FROM (old) or TO (new). Inferred from line_type when omitted. |
 | `parent_comment_id` | `integer` | No | (Optional) Reply to this comment id. |
 | `as_task` | `boolean` | No | Create a task: a blocking comment that must be resolved. |
+| `pending` | `boolean` | No | Create a pending comment, visible only to you until you publish the review with bitbucket_publish_review. |
 
 ---
 
@@ -159,6 +160,42 @@ Edit a pull request comment's text, or resolve / reopen a task.
 | `comment_id` | `integer` | Yes | Comment or task id. |
 | `text` | `string` | No | (Optional) New comment text. |
 | `task_state` | `string` | No | (Optional) For a task: 'resolved' or 'open' (reopen). |
+
+---
+
+### Set Reviewer Status
+
+Set my reviewer status on a pull request: approved, needs_work, unapproved.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `status` | `string` | Yes | Reviewer status to set. |
+| `version` | `integer` | No | (Optional) Pull request version from bitbucket_get_pull_request. Pass it to have the change refused if the pull request changed since you read it; omit it to use the current version. |
+
+---
+
+### Publish Review
+
+Publish my pending comments on a pull request as one review.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `status` | `string` | No | (Optional) Reviewer status to set when publishing. |
+| `comment` | `string` | No | (Optional) Summary comment for the review. |
 
 ---
 

@@ -39,7 +39,9 @@ class ManageMixin(ProjectsMixin):
                 "targetRefId": target_ref,
             },
         )
-        return [str(u["name"]) for u in users or [] if isinstance(u, dict) and u.get("name")]
+        return [
+            str(u["name"]) for u in users or [] if isinstance(u, dict) and u.get("name")
+        ]
 
     def create_pull_request(
         self,
@@ -116,7 +118,9 @@ class ManageMixin(ProjectsMixin):
         pr_path = self._pr_path(project_key, repo_slug, pull_request_id)
         current = self._get_json(pr_path) or {}
         body: dict[str, Any] = {
-            "version": int(version) if version is not None else current.get("version", 0),
+            "version": int(version)
+            if version is not None
+            else current.get("version", 0),
             "title": title if title is not None else current.get("title"),
             "description": description
             if description is not None
@@ -177,9 +181,7 @@ class ManageMixin(ProjectsMixin):
         pr_path = self._pr_path(project_key, repo_slug, pull_request_id)
         params = {"version": self._pr_version(pr_path, version)}
         body = {"comment": comment} if comment else None
-        response = self._request(
-            "POST", f"{pr_path}/decline", params=params, json=body
-        )
+        response = self._request("POST", f"{pr_path}/decline", params=params, json=body)
         return BitbucketPullRequest.from_api_response(response.json())
 
     def reopen_pull_request(

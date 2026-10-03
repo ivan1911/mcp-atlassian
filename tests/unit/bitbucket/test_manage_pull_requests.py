@@ -133,7 +133,9 @@ class TestVersionHandling:
     async def test_version_conflict_says_re_read(self, bb, fake_bitbucket):
         out_of_date(fake_bitbucket, "POST", f"{PR}/merge")
 
-        message = await bb.call_error("bitbucket_merge_pull_request", **pr_args(version=3))
+        message = await bb.call_error(
+            "bitbucket_merge_pull_request", **pr_args(version=3)
+        )
 
         assert "changed since it was read" in message
         assert "bitbucket_get_pull_request" in message
@@ -222,7 +224,9 @@ class TestMerge:
             status=409,
         )
 
-        message = await bb.call_error("bitbucket_merge_pull_request", **pr_args(version=2))
+        message = await bb.call_error(
+            "bitbucket_merge_pull_request", **pr_args(version=2)
+        )
 
         assert "vetoed" in message
         assert "You need 1 successful build" in message
