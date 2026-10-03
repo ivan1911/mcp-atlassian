@@ -1983,7 +1983,7 @@ async def batch_create_issues(
 
 
 @jira_mcp.tool(
-    tags={"jira", "read", "cloud_only", "toolset:jira_issues"},
+    tags={"jira", "read", "toolset:jira_issues"},
     annotations={"title": "Batch Get Changelogs", "readOnlyHint": True},
 )
 async def batch_get_changelogs(
@@ -2014,7 +2014,10 @@ async def batch_get_changelogs(
         ),
     ] = -1,
 ) -> str:
-    """Get changelogs for multiple Jira issues (Cloud only).
+    """Get changelogs for multiple Jira issues.
+
+    Jira Cloud uses the bulk changelog API; Server/Data Center reads each
+    issue's history.
 
     Args:
         ctx: The FastMCP context.
@@ -2023,18 +2026,14 @@ async def batch_get_changelogs(
         limit: Maximum changelogs per issue (-1 for all).
 
     Returns:
-        JSON string representing a list of issues with their changelogs.
+        JSON list of ``{"issue_id", "changelogs"}``; on Server/DC, issues that
+        could not be read (missing, no permission) are listed as
+        ``{"issue_id", "error"}`` instead of failing the whole batch.
 
     Raises:
-        NotImplementedError: If run on Jira Server/Data Center.
         ValueError: If Jira client is unavailable.
     """
     jira = await get_jira_fetcher(ctx)
-    # Ensure this runs only on Cloud, as per original function docstring
-    if not jira.config.is_cloud:
-        raise NotImplementedError(
-            "Batch get issue changelogs is only available on Jira Cloud."
-        )
 
     # Parse CSV strings into lists
     keys_list = [k.strip() for k in issue_ids_or_keys.split(",") if k.strip()]
@@ -2042,13 +2041,14 @@ async def batch_get_changelogs(
     if fields is not None:
         fields_list = [f.strip() for f in fields.split(",") if f.strip()]
 
-    # Call the underlying method
+    # Call the underlying method; unreadable issues are reported, not fatal.
+    skipped: dict[str, str] = {}
     issues_with_changelogs = jira.batch_get_changelogs(
-        issue_ids_or_keys=keys_list, fields=fields_list
+        issue_ids_or_keys=keys_list, fields=fields_list, errors=skipped
     )
 
     # Format the response
-    results = []
+    results: list[dict[str, Any]] = []
     limit_val = None if limit == -1 else limit
     for issue in issues_with_changelogs:
         results.append(
@@ -2060,6 +2060,9 @@ async def batch_get_changelogs(
                 ],
             }
         )
+    results.extend(
+        {"issue_id": key, "error": message} for key, message in skipped.items()
+    )
     return json.dumps(results, indent=2, ensure_ascii=False)
 
 

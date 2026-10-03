@@ -128,7 +128,11 @@ class PullRequestsMixin(BitbucketClient):
             The pull request.
         """
         path = self._pr_path(project_key, repo_slug, pull_request_id)
-        pull_request = BitbucketPullRequest.from_api_response(self._get_json(path))
+        # Counters (comments, open/resolved tasks) are only included on a
+        # single pull request when properties are requested explicitly.
+        pull_request = BitbucketPullRequest.from_api_response(
+            self._get_json(path, {"withProperties": "true"})
+        )
         if include_merge_status:
             pull_request.merge_status = BitbucketMergeStatus.from_api_response(
                 self._get_json(f"{path}/merge") or {}

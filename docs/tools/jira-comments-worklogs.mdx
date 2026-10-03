@@ -79,7 +79,7 @@ Add a worklog entry to a Jira issue.
 
 ### Batch Get Changelogs
 
-Get changelogs for multiple Jira issues (Cloud only).
+Get changelogs for multiple Jira issues.
 
 **Parameters:**
 
@@ -99,7 +99,7 @@ Efficient for tracking field changes across multiple issues at once. Returns cha
 </Tip>
 
 <Warning>
-Only available on Jira Cloud.
+Jira Cloud uses the bulk changelog API. On Server/Data Center each issue's history is read separately, so large batches make one request per issue.
 </Warning>
 
 ---
