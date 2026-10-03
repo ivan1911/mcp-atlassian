@@ -1983,7 +1983,7 @@ async def batch_create_issues(
 
 
 @jira_mcp.tool(
-    tags={"jira", "read", "cloud_only", "toolset:jira_issues"},
+    tags={"jira", "read", "toolset:jira_issues"},
     annotations={"title": "Batch Get Changelogs", "readOnlyHint": True},
 )
 async def batch_get_changelogs(
@@ -2014,7 +2014,10 @@ async def batch_get_changelogs(
         ),
     ] = -1,
 ) -> str:
-    """Get changelogs for multiple Jira issues (Cloud only).
+    """Get changelogs for multiple Jira issues.
+
+    Jira Cloud uses the bulk changelog API; Server/Data Center reads each
+    issue's history.
 
     Args:
         ctx: The FastMCP context.
@@ -2026,15 +2029,9 @@ async def batch_get_changelogs(
         JSON string representing a list of issues with their changelogs.
 
     Raises:
-        NotImplementedError: If run on Jira Server/Data Center.
         ValueError: If Jira client is unavailable.
     """
     jira = await get_jira_fetcher(ctx)
-    # Ensure this runs only on Cloud, as per original function docstring
-    if not jira.config.is_cloud:
-        raise NotImplementedError(
-            "Batch get issue changelogs is only available on Jira Cloud."
-        )
 
     # Parse CSV strings into lists
     keys_list = [k.strip() for k in issue_ids_or_keys.split(",") if k.strip()]

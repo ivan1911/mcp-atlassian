@@ -2052,16 +2052,90 @@ class TestIssuesMixin:
 
         assert fields["assignee"] == {user_field: user_id}
 
-    def test_batch_get_changelogs_not_cloud(self, issues_mixin: IssuesMixin):
-        """Test batch_get_changelogs method on non-cloud instance."""
+    @staticmethod
+    def _dc_issue_with_changelog(issue_id: str, histories: list[dict]) -> dict:
+        """A Server/DC issue fetched with expand=changelog."""
+        return {
+            "id": issue_id,
+            "key": f"TEST-{issue_id}",
+            "changelog": {
+                "startAt": 0,
+                "maxResults": len(histories),
+                "total": len(histories),
+                "histories": histories,
+            },
+        }
+
+    @staticmethod
+    def _dc_history(history_id: str, *items: tuple[str, str, str]) -> dict:
+        return {
+            "id": history_id,
+            "author": {"name": "alice", "displayName": "Alice"},
+            "created": "2026-10-03T16:04:02.222+0000",
+            "items": [
+                {
+                    "field": field,
+                    "fieldtype": "jira",
+                    "fromString": from_string,
+                    "toString": to_string,
+                }
+                for field, from_string, to_string in items
+            ],
+        }
+
+    def test_batch_get_changelogs_server_dc_reads_each_issue(
+        self, issues_mixin: IssuesMixin
+    ):
+        """On Server/DC, changelogs come from each issue with expand=changelog."""
         issues_mixin.config = MagicMock()
         issues_mixin.config.is_cloud = False
+        issues_mixin.jira.get_issue.side_effect = [
+            self._dc_issue_with_changelog(
+                "101", [self._dc_history("1", ("status", "Backlog", "In Progress"))]
+            ),
+            self._dc_issue_with_changelog("102", []),
+        ]
 
-        with pytest.raises(NotImplementedError):
-            issues_mixin.batch_get_changelogs(
-                issue_ids_or_keys=["TEST-123"],
-                fields=["summary", "description"],
-            )
+        result = issues_mixin.batch_get_changelogs(
+            issue_ids_or_keys=["TEST-101", "TEST-102"]
+        )
+
+        assert [issue.id for issue in result] == ["101", "102"]
+        assert [item.field for item in result[0].changelogs[0].items] == ["status"]
+        assert result[0].changelogs[0].items[0].to_string == "In Progress"
+        assert result[1].changelogs == []
+        for call, key in zip(
+            issues_mixin.jira.get_issue.call_args_list,
+            ["TEST-101", "TEST-102"],
+            strict=True,
+        ):
+            assert call.args[0] == key
+            assert call.kwargs["expand"] == "changelog"
+
+    def test_batch_get_changelogs_server_dc_filters_fields(
+        self, issues_mixin: IssuesMixin
+    ):
+        """The fields filter keeps only matching items and drops empty histories."""
+        issues_mixin.config = MagicMock()
+        issues_mixin.config.is_cloud = False
+        issues_mixin.jira.get_issue.return_value = self._dc_issue_with_changelog(
+            "101",
+            [
+                self._dc_history("1", ("summary", "Old", "New")),
+                self._dc_history(
+                    "2",
+                    ("resolution", "", "Done"),
+                    ("status", "In Progress", "Done"),
+                ),
+            ],
+        )
+
+        result = issues_mixin.batch_get_changelogs(
+            issue_ids_or_keys=["TEST-101"], fields=["Status"]
+        )
+
+        (changelog,) = result[0].changelogs
+        assert [item.field for item in changelog.items] == ["status"]
 
     def test_batch_get_changelogs_cloud(self, issues_mixin: IssuesMixin):
         """Test batch_get_changelogs method on cloud instance."""

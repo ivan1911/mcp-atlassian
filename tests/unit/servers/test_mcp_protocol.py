@@ -37,7 +37,6 @@ from tests.utils.mocks import MockEnvironment
 logger = logging.getLogger(__name__)
 
 JIRA_CLOUD_ONLY_TOOL_NAMES = {
-    "batch_get_changelogs",
     "move_issue",
 }
 
@@ -214,6 +213,8 @@ class TestMCPProtocolIntegration:
         assert listed_tool_names & expected_cloud_only_tools == (
             expected_cloud_only_tools if is_cloud else set()
         )
+        # Server/DC reads changelogs per issue, so the tool is on both.
+        assert "jira_batch_get_changelogs" in listed_tool_names
 
     async def test_tool_filtering_uses_header_based_jira_deployment(
         self, atlassian_mcp_server

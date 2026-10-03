@@ -2116,14 +2116,62 @@ class IssuesMixin(
             logger.error(f"Error in bulk issue creation: {str(e)}")
             raise
 
+    def _get_changelogs_per_issue(
+        self, issue_ids_or_keys: list[str], fields: list[str] | None
+    ) -> list[JiraIssue]:
+        """Read changelogs issue by issue (Server/Data Center).
+
+        Args:
+            issue_ids_or_keys: List of issue IDs or keys.
+            fields: Keep only changes to these fields (matched case-insensitively
+                against the item's field id or name); None keeps all.
+
+        Returns:
+            List of JiraIssue objects that only contain changelogs and id.
+        """
+        wanted = {f.lower() for f in fields} if fields else None
+        issues: list[JiraIssue] = []
+        for issue_id_or_key in issue_ids_or_keys:
+            data = self.jira.get_issue(
+                issue_id_or_key, fields="none", expand="changelog"
+            )
+            if not isinstance(data, dict):
+                continue
+            changelog = data.get("changelog") or {}
+            histories = changelog.get("histories") or []
+            if changelog.get("total", len(histories)) > len(histories):
+                logger.warning(
+                    "Changelog of %s is truncated: %d of %s histories returned.",
+                    issue_id_or_key,
+                    len(histories),
+                    changelog.get("total"),
+                )
+            changelogs = []
+            for history in histories:
+                items = history.get("items") or []
+                if wanted is not None:
+                    items = [
+                        item
+                        for item in items
+                        if str(item.get("fieldId", "")).lower() in wanted
+                        or str(item.get("field", "")).lower() in wanted
+                    ]
+                    if not items:
+                        continue
+                changelogs.append(
+                    JiraChangelog.from_api_response({**history, "items": items})
+                )
+            issues.append(JiraIssue(id=str(data.get("id", "")), changelogs=changelogs))
+        return issues
+
     def batch_get_changelogs(
         self, issue_ids_or_keys: list[str], fields: list[str] | None = None
     ) -> list[JiraIssue]:
         """
         Get changelogs for multiple issues in a batch. Repeatly fetch data if necessary.
 
-        Warning:
-            This function is only avaiable on Jira Cloud.
+        Jira Cloud uses the bulk changelog API. Server/Data Center has no bulk
+        endpoint, so each issue is read with ``expand=changelog``.
 
         Args:
             issue_ids_or_keys: List of issue IDs or keys
@@ -2134,9 +2182,7 @@ class IssuesMixin(
         """
 
         if not self.config.is_cloud:
-            error_msg = "Batch get issue changelogs is only available on Jira Cloud."
-            logger.error(error_msg)
-            raise NotImplementedError(error_msg)
+            return self._get_changelogs_per_issue(issue_ids_or_keys, fields)
 
         # Get paged api results
         paged_api_results = self.get_paged(
