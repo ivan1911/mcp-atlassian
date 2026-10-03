@@ -129,7 +129,11 @@ class TestGetPullRequest:
             ("carol", "needs_work"),
         ]
         assert result["open_task_count"] == 1
+        assert result["comment_count"] == 2
         assert "merge_status" not in result
+        # A single pull request only carries counters with withProperties.
+        (request,) = fake_bitbucket.requests_to("GET", f"{PRS}/7")
+        assert request.query == {"withProperties": "true"}
 
     async def test_optionally_includes_merge_status(self, bb, fake_bitbucket):
         fake_bitbucket.add("GET", f"{PRS}/7", pull_request(7))
