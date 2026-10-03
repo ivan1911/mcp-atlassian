@@ -944,3 +944,311 @@ async def update_pull_request_comment(
         task_state=task_state,
     )
     return _to_json(comment.to_simplified_dict())
+
+
+VersionParam = Annotated[
+    int | None,
+    Field(
+        description=(
+            "(Optional) Pull request version from bitbucket_get_pull_request. "
+            "Pass it to have the change refused if the pull request changed "
+            "since you read it; omit it to use the current version."
+        ),
+        default=None,
+        ge=0,
+    ),
+]
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "write", "toolset:bitbucket_pr_manage"},
+    annotations={"title": "Create Pull Request", "destructiveHint": False},
+)
+@check_write_access
+async def create_pull_request(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    title: Annotated[str, Field(description="Pull request title.", min_length=1)],
+    source_branch: Annotated[
+        str, Field(description="Branch with the changes, e.g. 'feature/login'.")
+    ],
+    target_branch: Annotated[
+        str | None,
+        Field(
+            description=(
+                "(Optional) Branch to merge into. Defaults to the repository's "
+                "default branch."
+            ),
+            default=None,
+        ),
+    ] = None,
+    description: Annotated[
+        str | None,
+        Field(description="(Optional) Description in markdown.", default=None),
+    ] = None,
+    reviewers: Annotated[
+        list[str] | None,
+        Field(
+            description=(
+                "(Optional) Reviewer usernames. When omitted, the repository's "
+                "default reviewers for this branch pair are added."
+            ),
+            default=None,
+        ),
+    ] = None,
+    draft: Annotated[
+        bool, Field(description="Create as a draft pull request.", default=False)
+    ] = False,
+) -> str:
+    """Create a pull request from a source branch to a target branch.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        title: Title.
+        source_branch: Source branch.
+        target_branch: Target branch.
+        description: Description.
+        reviewers: Reviewer usernames.
+        draft: Draft flag.
+
+    Returns:
+        JSON of the created pull request.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    pull_request = fetcher.create_pull_request(
+        project_key,
+        repo_slug,
+        title,
+        source_branch,
+        target_branch=target_branch,
+        description=description,
+        reviewers=reviewers,
+        draft=draft,
+    )
+    return _to_json(pull_request.to_simplified_dict())
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "write", "toolset:bitbucket_pr_manage"},
+    annotations={"title": "Update Pull Request", "destructiveHint": False},
+)
+@check_write_access
+async def update_pull_request(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    pull_request_id: PullRequestIdParam,
+    title: Annotated[
+        str | None, Field(description="(Optional) New title.", default=None)
+    ] = None,
+    description: Annotated[
+        str | None, Field(description="(Optional) New description.", default=None)
+    ] = None,
+    reviewers: Annotated[
+        list[str] | None,
+        Field(
+            description=(
+                "(Optional) Full new list of reviewer usernames (replaces the "
+                "current reviewers). Omit to keep them."
+            ),
+            default=None,
+        ),
+    ] = None,
+    target_branch: Annotated[
+        str | None, Field(description="(Optional) New target branch.", default=None)
+    ] = None,
+    draft: Annotated[
+        bool | None,
+        Field(description="(Optional) Set or clear the draft flag.", default=None),
+    ] = None,
+    version: VersionParam = None,
+) -> str:
+    """Update a pull request's title, description, reviewers, target or draft flag.
+
+    Fields that are not given keep their current values.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        pull_request_id: Pull request id.
+        title: New title.
+        description: New description.
+        reviewers: New reviewer list.
+        target_branch: New target branch.
+        draft: Draft flag.
+        version: Expected pull request version.
+
+    Returns:
+        JSON of the updated pull request.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    pull_request = fetcher.update_pull_request(
+        project_key,
+        repo_slug,
+        pull_request_id,
+        title=title,
+        description=description,
+        reviewers=reviewers,
+        target_branch=target_branch,
+        draft=draft,
+        version=version,
+    )
+    return _to_json(pull_request.to_simplified_dict())
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "write", "toolset:bitbucket_pr_manage"},
+    annotations={"title": "Merge Pull Request", "destructiveHint": True},
+)
+@check_write_access
+async def merge_pull_request(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    pull_request_id: PullRequestIdParam,
+    strategy: Annotated[
+        str | None,
+        Field(
+            description=(
+                "(Optional) Merge strategy id configured for the repository, "
+                "e.g. 'no-ff', 'ff', 'ff-only', 'squash', 'squash-ff-only', "
+                "'rebase-no-ff', 'rebase-ff-only'. Defaults to the repository's."
+            ),
+            default=None,
+        ),
+    ] = None,
+    message: Annotated[
+        str | None,
+        Field(description="(Optional) Merge commit message.", default=None),
+    ] = None,
+    version: VersionParam = None,
+) -> str:
+    """Merge a pull request. If Bitbucket refuses, the error lists why.
+
+    Check first with bitbucket_get_pull_request(include_merge_status=true).
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        pull_request_id: Pull request id.
+        strategy: Merge strategy id.
+        message: Merge commit message.
+        version: Expected pull request version.
+
+    Returns:
+        JSON of the merged pull request.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    pull_request = fetcher.merge_pull_request(
+        project_key,
+        repo_slug,
+        pull_request_id,
+        strategy=strategy,
+        message=message,
+        version=version,
+    )
+    return _to_json(pull_request.to_simplified_dict())
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "write", "toolset:bitbucket_pr_manage"},
+    annotations={"title": "Decline Pull Request", "destructiveHint": False},
+)
+@check_write_access
+async def decline_pull_request(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    pull_request_id: PullRequestIdParam,
+    comment: Annotated[
+        str | None,
+        Field(description="(Optional) Reason, added as a comment.", default=None),
+    ] = None,
+    version: VersionParam = None,
+) -> str:
+    """Decline a pull request (it can be reopened later).
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        pull_request_id: Pull request id.
+        comment: Reason.
+        version: Expected pull request version.
+
+    Returns:
+        JSON of the declined pull request.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    pull_request = fetcher.decline_pull_request(
+        project_key, repo_slug, pull_request_id, comment=comment, version=version
+    )
+    return _to_json(pull_request.to_simplified_dict())
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "write", "toolset:bitbucket_pr_manage"},
+    annotations={"title": "Reopen Pull Request", "destructiveHint": False},
+)
+@check_write_access
+async def reopen_pull_request(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    pull_request_id: PullRequestIdParam,
+    version: VersionParam = None,
+) -> str:
+    """Reopen a declined pull request.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        pull_request_id: Pull request id.
+        version: Expected pull request version.
+
+    Returns:
+        JSON of the reopened pull request.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    pull_request = fetcher.reopen_pull_request(
+        project_key, repo_slug, pull_request_id, version=version
+    )
+    return _to_json(pull_request.to_simplified_dict())
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "write", "toolset:bitbucket_pr_manage"},
+    annotations={"title": "Create Branch", "destructiveHint": False},
+)
+@check_write_access
+async def create_branch(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    name: Annotated[str, Field(description="New branch name, e.g. 'fix/login'.")],
+    start_point: Annotated[
+        str,
+        Field(description="Branch, tag or commit hash to create the branch from."),
+    ],
+) -> str:
+    """Create a branch from a branch, tag or commit.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        name: Branch name.
+        start_point: Branch, tag or commit.
+
+    Returns:
+        JSON of the created branch.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    branch = fetcher.create_branch(project_key, repo_slug, name, start_point)
+    return _to_json(branch.to_simplified_dict())

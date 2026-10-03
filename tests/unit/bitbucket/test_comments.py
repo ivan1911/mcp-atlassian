@@ -125,7 +125,9 @@ class TestAddComment:
 
 class TestUpdateComment:
     async def test_edits_text_with_current_version(self, bb, fake_bitbucket):
-        fake_bitbucket.add("GET", f"{COMMENTS}/41", comment_payload(41, "old", version=4))
+        fake_bitbucket.add(
+            "GET", f"{COMMENTS}/41", comment_payload(41, "old", version=4)
+        )
         fake_bitbucket.add(
             "PUT", f"{COMMENTS}/41", comment_payload(41, "new", version=5)
         )
@@ -195,7 +197,10 @@ class TestWriteSafety:
         async with bitbucket_mcp_factory(config) as client:
             for tool, extra in [
                 ("bitbucket_add_pull_request_comment", {"text": "x"}),
-                ("bitbucket_update_pull_request_comment", {"comment_id": 1, "text": "x"}),
+                (
+                    "bitbucket_update_pull_request_comment",
+                    {"comment_id": 1, "text": "x"},
+                ),
             ]:
                 message = await client.call_error(tool, **args(**extra))
                 assert "BITBUCKET_PROJECTS_FILTER" in message, tool

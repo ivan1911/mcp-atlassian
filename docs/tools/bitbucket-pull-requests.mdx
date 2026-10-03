@@ -161,3 +161,117 @@ Edit a pull request comment's text, or resolve / reopen a task.
 | `task_state` | `string` | No | (Optional) For a task: 'resolved' or 'open' (reopen). |
 
 ---
+
+### Create Pull Request
+
+Create a pull request from a source branch to a target branch.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `title` | `string` | Yes | Pull request title. |
+| `source_branch` | `string` | Yes | Branch with the changes, e.g. 'feature/login'. |
+| `target_branch` | `string` | No | (Optional) Branch to merge into. Defaults to the repository's default branch. |
+| `description` | `string` | No | (Optional) Description in markdown. |
+| `reviewers` | `array` | No | (Optional) Reviewer usernames. When omitted, the repository's default reviewers for this branch pair are added. |
+| `draft` | `boolean` | No | Create as a draft pull request. |
+
+---
+
+### Update Pull Request
+
+Update a pull request's title, description, reviewers, target or draft flag.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `title` | `string` | No | (Optional) New title. |
+| `description` | `string` | No | (Optional) New description. |
+| `reviewers` | `array` | No | (Optional) Full new list of reviewer usernames (replaces the current reviewers). Omit to keep them. |
+| `target_branch` | `string` | No | (Optional) New target branch. |
+| `draft` | `boolean` | No | (Optional) Set or clear the draft flag. |
+| `version` | `integer` | No | (Optional) Pull request version from bitbucket_get_pull_request. Pass it to have the change refused if the pull request changed since you read it; omit it to use the current version. |
+
+---
+
+### Merge Pull Request
+
+Merge a pull request. If Bitbucket refuses, the error lists why.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `strategy` | `string` | No | (Optional) Merge strategy id configured for the repository, e.g. 'no-ff', 'ff', 'ff-only', 'squash', 'squash-ff-only', 'rebase-no-ff', 'rebase-ff-only'. Defaults to the repository's. |
+| `message` | `string` | No | (Optional) Merge commit message. |
+| `version` | `integer` | No | (Optional) Pull request version from bitbucket_get_pull_request. Pass it to have the change refused if the pull request changed since you read it; omit it to use the current version. |
+
+---
+
+### Decline Pull Request
+
+Decline a pull request (it can be reopened later).
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `comment` | `string` | No | (Optional) Reason, added as a comment. |
+| `version` | `integer` | No | (Optional) Pull request version from bitbucket_get_pull_request. Pass it to have the change refused if the pull request changed since you read it; omit it to use the current version. |
+
+---
+
+### Reopen Pull Request
+
+Reopen a declined pull request.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `version` | `integer` | No | (Optional) Pull request version from bitbucket_get_pull_request. Pass it to have the change refused if the pull request changed since you read it; omit it to use the current version. |
+
+---
+
+### Create Branch
+
+Create a branch from a branch, tag or commit.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `name` | `string` | Yes | New branch name, e.g. 'fix/login'. |
+| `start_point` | `string` | Yes | Branch, tag or commit hash to create the branch from. |
+
+---

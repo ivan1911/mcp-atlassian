@@ -46,8 +46,15 @@ class BitbucketApiError(Exception):
         self.status = status
 
 
-def _bitbucket_messages(response: Response) -> list[str]:
-    """Extract ``errors[].message`` from a Bitbucket error body."""
+OUT_OF_DATE_MESSAGE = (
+    "Bitbucket reported a conflict (409): the pull request changed since it "
+    "was read (version conflict). Re-read it with bitbucket_get_pull_request "
+    "and retry with the current version."
+)
+
+
+def _bitbucket_errors(response: Response) -> list[dict[str, Any]]:
+    """Return the ``errors`` list of a Bitbucket error body."""
     try:
         body = response.json()
     except ValueError:
@@ -55,11 +62,22 @@ def _bitbucket_messages(response: Response) -> list[str]:
     errors = body.get("errors") if isinstance(body, dict) else None
     if not isinstance(errors, list):
         return []
-    return [
-        str(e.get("message"))
-        for e in errors
-        if isinstance(e, dict) and e.get("message")
-    ]
+    return [e for e in errors if isinstance(e, dict)]
+
+
+def _bitbucket_messages(errors: list[dict[str, Any]]) -> list[str]:
+    """Error messages, plus merge veto reasons where Bitbucket gives them."""
+    messages = []
+    for error in errors:
+        if error.get("message"):
+            messages.append(str(error["message"]))
+        for veto in error.get("vetoes") or []:
+            summary = veto.get("summaryMessage") or ""
+            detail = veto.get("detailedMessage") or ""
+            reason = f"{summary}: {detail}" if summary and detail else summary or detail
+            if reason:
+                messages.append(f"veto: {reason}")
+    return messages
 
 
 def _raise_for_status(response: Response) -> None:
@@ -70,8 +88,13 @@ def _raise_for_status(response: Response) -> None:
         raise BitbucketApiError(
             status, format_rate_limit_error(_HttpErr(response), service="Bitbucket")
         )
+    errors = _bitbucket_errors(response)
+    if status == 409 and any(
+        "OutOfDate" in str(e.get("exceptionName", "")) for e in errors
+    ):
+        raise BitbucketApiError(status, OUT_OF_DATE_MESSAGE)
     hint = _STATUS_HINTS.get(status, f"Bitbucket API error ({status}).")
-    details = "; ".join(_bitbucket_messages(response))
+    details = "; ".join(_bitbucket_messages(errors))
     raise BitbucketApiError(status, f"{hint} {details}".strip())
 
 
@@ -210,6 +233,17 @@ class BitbucketClient:
         """API path of a pull request, after enforcing the projects filter."""
         repo = self._repo_path(project_key, repo_slug)
         return f"{repo}/pull-requests/{int(pull_request_id)}"
+
+    def _pr_version(self, pr_path: str, version: int | None) -> int:
+        """Return ``version`` as given, or read the pull request's current one.
+
+        Passing the version that was read earlier makes Bitbucket refuse the
+        change (409) if the pull request moved on in between.
+        """
+        if version is not None:
+            return int(version)
+        current = self._get_json(pr_path) or {}
+        return int(current.get("version", 0))
 
     def _request(
         self,
