@@ -1406,3 +1406,67 @@ async def search_code(
             limit=limit,
         )
     )
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "write", "toolset:bitbucket_destructive"},
+    annotations={"title": "Delete Pull Request", "destructiveHint": True},
+)
+@check_write_access
+async def delete_pull_request(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    pull_request_id: PullRequestIdParam,
+    version: VersionParam = None,
+) -> str:
+    """Permanently delete a pull request. Prefer declining when unsure.
+
+    Only available when the bitbucket_destructive toolset is named in TOOLSETS.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        pull_request_id: Pull request id.
+        version: Expected pull request version.
+
+    Returns:
+        JSON ``{"deleted": true, "pull_request_id": ...}``.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    return _to_json(
+        fetcher.delete_pull_request(
+            project_key, repo_slug, pull_request_id, version=version
+        )
+    )
+
+
+@bitbucket_mcp.tool(
+    tags={"bitbucket", "write", "toolset:bitbucket_destructive"},
+    annotations={"title": "Delete Branch", "destructiveHint": True},
+)
+@check_write_access
+async def delete_branch(
+    ctx: Context,
+    project_key: ProjectKeyParam,
+    repo_slug: RepoSlugParam,
+    name: Annotated[
+        str, Field(description="Branch name or fully qualified ref to delete.")
+    ],
+) -> str:
+    """Delete a branch.
+
+    Only available when the bitbucket_destructive toolset is named in TOOLSETS.
+
+    Args:
+        ctx: The FastMCP context.
+        project_key: Project key.
+        repo_slug: Repository slug.
+        name: Branch name.
+
+    Returns:
+        JSON ``{"deleted": true, "branch": ...}``.
+    """
+    fetcher = await get_bitbucket_fetcher(ctx)
+    return _to_json(fetcher.delete_branch(project_key, repo_slug, name))

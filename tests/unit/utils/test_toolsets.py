@@ -12,6 +12,11 @@ from mcp_atlassian.utils.toolsets import (
     should_include_tool_by_toolset,
 )
 
+# Everything 'all' (or an unset TOOLSETS) enables: explicit_only toolsets excluded.
+IMPLICIT_TOOLSETS = {
+    name for name, definition in ALL_TOOLSETS.items() if not definition.explicit_only
+}
+
 
 class TestGetEnabledToolsets:
     """Tests for get_enabled_toolsets() env var parsing."""
@@ -19,9 +24,9 @@ class TestGetEnabledToolsets:
     @pytest.mark.parametrize(
         "env_value, expected",
         [
-            pytest.param(None, set(ALL_TOOLSETS.keys()), id="unset_uses_all"),
-            pytest.param("", set(ALL_TOOLSETS.keys()), id="empty_uses_all"),
-            pytest.param(" , , ", set(ALL_TOOLSETS.keys()), id="whitespace_uses_all"),
+            pytest.param(None, IMPLICIT_TOOLSETS, id="unset_uses_all"),
+            pytest.param("", IMPLICIT_TOOLSETS, id="empty_uses_all"),
+            pytest.param(" , , ", IMPLICIT_TOOLSETS, id="whitespace_uses_all"),
             pytest.param("jira_agile", {"jira_agile"}, id="single_toolset"),
             pytest.param("typo_name", set(), id="unknown_name_fail_closed"),
         ],
@@ -35,11 +40,11 @@ class TestGetEnabledToolsets:
         assert result == expected
 
     def test_all_keyword(self, monkeypatch):
-        """Test 'all' keyword returns all 31 toolset names."""
+        """Test 'all' keyword returns all 31 non-explicit-only toolset names."""
         monkeypatch.setenv("TOOLSETS", "all")
         result = get_enabled_toolsets()
         assert result is not None
-        assert result == set(ALL_TOOLSETS.keys())
+        assert result == IMPLICIT_TOOLSETS
         assert len(result) == 31
 
     def test_all_keyword_case_insensitive(self, monkeypatch):
@@ -47,7 +52,7 @@ class TestGetEnabledToolsets:
         monkeypatch.setenv("TOOLSETS", "ALL")
         result = get_enabled_toolsets()
         assert result is not None
-        assert result == set(ALL_TOOLSETS.keys())
+        assert result == IMPLICIT_TOOLSETS
         assert len(result) == 31
 
     def test_default_keyword(self, monkeypatch):
@@ -104,8 +109,8 @@ class TestGetEnabledToolsets:
         assert DEFAULT_TOOLSETS == expected_defaults
 
     def test_all_toolsets_count(self):
-        """Verify ALL_TOOLSETS has exactly 31 entries."""
-        assert len(ALL_TOOLSETS) == 31
+        """Verify ALL_TOOLSETS has exactly 32 entries."""
+        assert len(ALL_TOOLSETS) == 32
 
     def test_all_toolsets_contains_jira_and_confluence(self):
         """Verify ALL_TOOLSETS has both Jira and Confluence toolsets."""
@@ -150,7 +155,7 @@ class TestExplicitOnlyToolsets:
 
     def test_all_still_enables_every_other_toolset(self, monkeypatch):
         monkeypatch.setenv("TOOLSETS", "all")
-        assert get_enabled_toolsets() == set(ALL_TOOLSETS) - {self.OPT_IN}
+        assert get_enabled_toolsets() == IMPLICIT_TOOLSETS
 
     def test_enabled_when_named(self, monkeypatch):
         monkeypatch.setenv("TOOLSETS", self.OPT_IN)
@@ -158,12 +163,12 @@ class TestExplicitOnlyToolsets:
 
     def test_enabled_when_named_alongside_all(self, monkeypatch):
         monkeypatch.setenv("TOOLSETS", f"all,{self.OPT_IN}")
-        assert get_enabled_toolsets() == set(ALL_TOOLSETS)
+        assert get_enabled_toolsets() == IMPLICIT_TOOLSETS | {self.OPT_IN}
 
-    def test_existing_toolsets_are_not_explicit_only(self):
-        assert not any(
-            d.explicit_only for n, d in ALL_TOOLSETS.items() if n != self.OPT_IN
-        )
+    def test_only_bitbucket_destructive_is_explicit_only(self):
+        assert {
+            n for n, d in ALL_TOOLSETS.items() if d.explicit_only and n != self.OPT_IN
+        } == {"bitbucket_destructive"}
 
 
 class TestShouldIncludeToolByToolset:

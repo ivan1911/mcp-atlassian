@@ -187,6 +187,12 @@ BITBUCKET_TOOLSETS: dict[str, ToolsetDefinition] = {
         description="Bitbucket code search (unofficial endpoint, opt-in)",
         default=False,
     ),
+    "bitbucket_destructive": ToolsetDefinition(
+        name="bitbucket_destructive",
+        description="Delete Bitbucket pull requests and branches (named opt-in only)",
+        default=False,
+        explicit_only=True,
+    ),
 }
 
 # --- Combined registry ---
@@ -217,7 +223,8 @@ def _implicit_toolsets() -> set[str]:
 def get_enabled_toolsets() -> set[str]:
     """Parse the TOOLSETS env var into a set of enabled toolset names.
 
-    Supports keywords 'all' (all 31 toolsets) and 'default' (11 defaults),
+    Supports keywords 'all' (all 31 non-explicit-only toolsets) and 'default'
+    (11 defaults),
     plus comma-separated specific toolset names. Case-insensitive for keywords.
 
     When TOOLSETS is unset or empty, returns all toolsets with a deprecation

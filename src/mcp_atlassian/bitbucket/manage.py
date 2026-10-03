@@ -7,6 +7,7 @@ from .client import qualify_branch, segment
 from .projects import ProjectsMixin
 
 DEFAULT_REVIEWERS_API = "rest/default-reviewers/latest"
+BRANCH_UTILS_API = "rest/branch-utils/latest"
 
 
 def _reviewers(names: list[str]) -> list[dict[str, Any]]:
@@ -209,3 +210,32 @@ class ManageMixin(ProjectsMixin):
             json={"name": name, "startPoint": start_point},
         )
         return BitbucketRef.from_api_response(response.json())
+
+    def delete_pull_request(
+        self,
+        project_key: str,
+        repo_slug: str,
+        pull_request_id: int,
+        *,
+        version: int | None = None,
+    ) -> dict[str, Any]:
+        """Permanently delete a pull request."""
+        pr_path = self._pr_path(project_key, repo_slug, pull_request_id)
+        body = {"version": self._pr_version(pr_path, version)}
+        self._request("DELETE", pr_path, json=body)
+        return {"deleted": True, "pull_request_id": int(pull_request_id)}
+
+    def delete_branch(
+        self, project_key: str, repo_slug: str, name: str
+    ) -> dict[str, Any]:
+        """Delete a branch."""
+        self._repo_path(project_key, repo_slug)  # enforce the projects filter
+        key = self._project_key(project_key)
+        ref = qualify_branch(name)
+        self._request(
+            "DELETE",
+            f"{BRANCH_UTILS_API}/projects/{segment(key)}/repos/"
+            f"{segment(repo_slug.strip())}/branches",
+            json={"name": ref, "dryRun": False},
+        )
+        return {"deleted": True, "branch": ref}

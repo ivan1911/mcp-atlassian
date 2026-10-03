@@ -188,6 +188,8 @@ CATEGORY_TOOLS: dict[str, list[str]] = {
         "bitbucket_decline_pull_request",
         "bitbucket_reopen_pull_request",
         "bitbucket_create_branch",
+        "bitbucket_delete_pull_request",
+        "bitbucket_delete_branch",
     ],
 }
 
@@ -334,6 +336,10 @@ class ToolCounts:
     core_toolsets: int
     bitbucket_tools: int = 0
     bitbucket_toolsets: int = 0
+    # Tools/toolsets that 'all' or an unset TOOLSETS enables: explicit_only
+    # toolsets (e.g. bitbucket_destructive) must be named and are excluded.
+    implicit_tools: int = 0
+    implicit_toolsets: int = 0
 
 
 @dataclass
@@ -539,6 +545,11 @@ def get_tool_counts(tools: dict[str, dict[str, Any]]) -> ToolCounts:
         core_toolsets=len(DEFAULT_TOOLSETS),
         bitbucket_tools=sum(name.startswith("bitbucket_") for name in tools),
         bitbucket_toolsets=len(BITBUCKET_TOOLSETS),
+        implicit_tools=sum(
+            not ALL_TOOLSETS[get_toolset_tag(info["tags"]) or ""].explicit_only
+            for info in tools.values()
+        ),
+        implicit_toolsets=sum(not d.explicit_only for d in ALL_TOOLSETS.values()),
     )
 
 
@@ -761,12 +772,12 @@ COUNT_RULES = (
     CountRule(
         ".env.example",
         re.compile(r"All (\d+)\s+toolsets? \((\d+)\s+tools?\)", re.IGNORECASE),
-        "total_toolsets",
+        "implicit_toolsets",
     ),
     CountRule(
         ".env.example",
         re.compile(r"All (\d+)\s+toolsets? \((\d+)\s+tools?\)", re.IGNORECASE),
-        "total_tools",
+        "implicit_tools",
         group=2,
     ),
     CountRule(
@@ -775,12 +786,12 @@ COUNT_RULES = (
             r"If unset, all toolsets are enabled \((\d+)\s+tools?\)",
             re.IGNORECASE,
         ),
-        "total_tools",
+        "implicit_tools",
     ),
     CountRule(
         "docs.json",
-        re.compile(r"all (\d+)\s+tools? enabled by default", re.IGNORECASE),
-        "total_tools",
+        re.compile(r"(\d+)\s+tools? enabled by default", re.IGNORECASE),
+        "implicit_tools",
     ),
     CountRule(
         "docs/tools-reference.mdx",
@@ -813,7 +824,7 @@ COUNT_RULES = (
     CountRule(
         "docs/tools-reference.mdx",
         re.compile(r"Enable all toolsets \((\d+)\s+tools?\)", re.IGNORECASE),
-        "total_tools",
+        "implicit_tools",
     ),
     CountRule(
         "docs/configuration.mdx",

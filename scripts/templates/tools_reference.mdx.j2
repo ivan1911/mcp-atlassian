@@ -116,8 +116,12 @@ TOOLSETS=default,jira_agile,jira_attachments
 # Enable deprecated tools only while migrating to their replacements:
 TOOLSETS=legacy
 
-# Enable all toolsets ({{ counts.total_tools }} tools)
+# Enable all toolsets ({{ counts.implicit_tools }} tools)
 TOOLSETS=all
+
+# bitbucket_destructive (delete pull requests and branches) is never enabled by
+# "all" or an unset TOOLSETS; name it explicitly to opt in:
+TOOLSETS=all,bitbucket_destructive
 
 # Command line
 uvx mcp-atlassian --toolsets "default,jira_agile"

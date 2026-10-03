@@ -312,3 +312,36 @@ Create a branch from a branch, tag or commit.
 | `start_point` | `string` | Yes | Branch, tag or commit hash to create the branch from. |
 
 ---
+
+### Delete Pull Request
+
+Permanently delete a pull request. Prefer declining when unsure.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `pull_request_id` | `integer` | Yes | Pull request id. |
+| `version` | `integer` | No | (Optional) Pull request version from bitbucket_get_pull_request. Pass it to have the change refused if the pull request changed since you read it; omit it to use the current version. |
+
+---
+
+### Delete Branch
+
+Delete a branch.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_key` | `string` | Yes | Project key, e.g. 'PLAT' (case-insensitive). |
+| `repo_slug` | `string` | Yes | Repository slug, e.g. 'billing-api'. |
+| `name` | `string` | Yes | Branch name or fully qualified ref to delete. |
+
+---

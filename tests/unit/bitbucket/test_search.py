@@ -118,9 +118,7 @@ async def test_unavailable_search_is_reported_clearly(bb, fake_bitbucket, status
     assert "bitbucket_list_files" in message
 
 
-async def test_unexpected_response_shape_is_reported_as_unavailable(
-    bb, fake_bitbucket
-):
+async def test_unexpected_response_shape_is_reported_as_unavailable(bb, fake_bitbucket):
     fake_bitbucket.add("POST", SEARCH, {"something": "else"})
 
     message = await bb.call_error("bitbucket_search_code", query="x")

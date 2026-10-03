@@ -1,9 +1,9 @@
 ---
 title: "Tools Reference"
-description: "Overview of all 126 MCP tools for Jira, Confluence and Bitbucket — organized by category with quick links"
+description: "Overview of all 128 MCP tools for Jira, Confluence and Bitbucket — organized by category with quick links"
 ---
 
-MCP Atlassian provides **126 tools** for interacting with Jira, Confluence and Bitbucket Data Center. Tools are organized by category below.
+MCP Atlassian provides **128 tools** for interacting with Jira, Confluence and Bitbucket Data Center. Tools are organized by category below.
 
 ## Jira Tools
 
@@ -110,7 +110,7 @@ Toolsets group related tools for easier management via `TOOLSETS` env var or `--
 | `confluence_templates` | No | `confluence_list_page_templates`, `confluence_get_page_template`, `confluence_create_page_from_template` |
 | `confluence_permissions` | No | `confluence_check_content_permissions`, `confluence_get_space_permissions` |
 
-**Bitbucket Toolsets (6):**
+**Bitbucket Toolsets (7):**
 
 | Toolset | Core | Tools |
 |---------|:----:|-------|
@@ -120,6 +120,7 @@ Toolsets group related tools for easier management via `TOOLSETS` env var or `--
 | `bitbucket_pr_review` | Yes | `bitbucket_add_pull_request_comment`, `bitbucket_update_pull_request_comment`, `bitbucket_set_reviewer_status`, `bitbucket_publish_review` |
 | `bitbucket_pr_manage` | Yes | `bitbucket_create_pull_request`, `bitbucket_update_pull_request`, `bitbucket_merge_pull_request`, `bitbucket_decline_pull_request`, `bitbucket_reopen_pull_request`, `bitbucket_create_branch` |
 | `bitbucket_search` | No | `bitbucket_search_code` |
+| `bitbucket_destructive` | No | `bitbucket_delete_pull_request`, `bitbucket_delete_branch` |
 
 **Migration Toolsets (1):**
 
@@ -137,6 +138,10 @@ TOOLSETS=legacy
 
 # Enable all toolsets (126 tools)
 TOOLSETS=all
+
+# bitbucket_destructive (delete pull requests and branches) is never enabled by
+# "all" or an unset TOOLSETS; name it explicitly to opt in:
+TOOLSETS=all,bitbucket_destructive
 
 # Command line
 uvx mcp-atlassian --toolsets "default,jira_agile"

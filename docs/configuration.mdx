@@ -351,6 +351,13 @@ migrate to their replacement tools. Use `TOOLSETS=legacy` to expose only those
 tools, or combine it with another selection such as `TOOLSETS=default,legacy`.
 It is not included in `TOOLSETS=default`.
 
+The **`bitbucket_search`** toolset (code search through Bitbucket's unofficial
+search endpoint) is opt-in: it is not part of `TOOLSETS=default`.
+
+The **`bitbucket_destructive`** toolset (delete pull requests and branches) is
+never enabled implicitly — not by an unset `TOOLSETS`, `all`, or `default`. Name
+it explicitly to opt in, for example `TOOLSETS=all,bitbucket_destructive`.
+
 When both `TOOLSETS` and `ENABLED_TOOLS` are set, they intersect — a tool must pass
 both filters. If `TOOLSETS` is not set, all toolsets are currently enabled.
 
