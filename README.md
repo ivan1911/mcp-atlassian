@@ -7,7 +7,7 @@
 ![License](https://img.shields.io/github/license/sooperset/mcp-atlassian)
 [![Docs](https://img.shields.io/badge/docs-mintlify-blue)](https://mcp-atlassian.soomiles.com)
 
-Model Context Protocol (MCP) server for Atlassian products (Confluence, Jira and Bitbucket Data Center). Supports both Cloud and Server/Data Center deployments for Jira and Confluence, and Bitbucket Data Center.
+Model Context Protocol (MCP) server for Atlassian products: Jira, Confluence and Bitbucket. Jira and Confluence are supported on Cloud and Server/Data Center; Bitbucket is supported on Data Center (self-hosted) only.
 
 https://github.com/user-attachments/assets/35303504-14c6-4ae4-913b-7c25ea511c3e
 
@@ -26,6 +26,8 @@ Go to https://id.atlassian.com/manage-profile/security/api-tokens and create a t
 
 > For Server/Data Center, use a Personal Access Token instead. See [Authentication](https://mcp-atlassian.soomiles.com/docs/authentication).
 
+> For Bitbucket Data Center, create an HTTP access token in Bitbucket under **Profile → Manage account → HTTP access tokens** (read permission to browse and review, write permission to comment, create or merge pull requests).
+
 ### 2. Configure Your IDE
 
 Add to your Claude Desktop or Cursor MCP configuration:
@@ -42,7 +44,9 @@ Add to your Claude Desktop or Cursor MCP configuration:
         "JIRA_API_TOKEN": "your_api_token",
         "CONFLUENCE_URL": "https://your-company.atlassian.net/wiki",
         "CONFLUENCE_USERNAME": "your.email@company.com",
-        "CONFLUENCE_API_TOKEN": "your_api_token"
+        "CONFLUENCE_API_TOKEN": "your_api_token",
+        "BITBUCKET_URL": "https://bitbucket.your-company.com",
+        "BITBUCKET_PERSONAL_TOKEN": "your_bitbucket_http_access_token"
       }
     }
   }
@@ -51,7 +55,7 @@ Add to your Claude Desktop or Cursor MCP configuration:
 
 > **Server/Data Center users**: Use `JIRA_PERSONAL_TOKEN` instead of `JIRA_USERNAME` + `JIRA_API_TOKEN`. See [Authentication](https://mcp-atlassian.soomiles.com/docs/authentication) for details.
 
-> **Bitbucket Data Center**: add `"BITBUCKET_URL": "https://bitbucket.your-company.com"` and `"BITBUCKET_PERSONAL_TOKEN": "your_http_access_token"`. Only Data Center with an HTTP access token is supported (no Bitbucket Cloud). Restrict access with `BITBUCKET_PROJECTS_FILTER`; see [.env.example](.env.example).
+> **Bitbucket Data Center** is optional: drop the `BITBUCKET_*` lines if you don't use it, or keep only them for a Bitbucket-only setup. See [Bitbucket Data Center](#bitbucket-data-center) below.
 
 #### Autohand Code
 
@@ -65,6 +69,8 @@ autohand mcp add mcp-atlassian env \
   CONFLUENCE_URL=https://your-company.atlassian.net/wiki \
   CONFLUENCE_USERNAME=your.email@company.com \
   CONFLUENCE_API_TOKEN=your_api_token \
+  BITBUCKET_URL=https://bitbucket.your-company.com \
+  BITBUCKET_PERSONAL_TOKEN=your_bitbucket_http_access_token \
   uvx mcp-atlassian
 ```
 
@@ -80,6 +86,49 @@ Ask your AI assistant to:
 - **"Create a bug ticket for the login issue"**
 - **"Update the status of PROJ-123 to Done"**
 - **"Review pull request #42 in PLAT/api and leave inline comments"**
+- **"Which pull requests are waiting for my review?"**
+
+## Bitbucket Data Center
+
+Bitbucket support targets self-hosted **Bitbucket Data Center** (v8.0+, tested on 10.x). Bitbucket Cloud is not supported.
+
+```json
+{
+  "mcpServers": {
+    "mcp-atlassian": {
+      "command": "uvx",
+      "args": ["mcp-atlassian"],
+      "env": {
+        "BITBUCKET_URL": "https://bitbucket.your-company.com",
+        "BITBUCKET_PERSONAL_TOKEN": "your_http_access_token",
+        "BITBUCKET_PROJECTS_FILTER": "PLAT,OPS"
+      }
+    }
+  }
+}
+```
+
+Bitbucket can be configured on its own or next to Jira and Confluence in the same `env` block.
+
+What the assistant can do:
+
+- **Read code**: browse projects and repositories, list files, read files at any branch, tag or commit, list branches, tags and commits, and read commit diffs.
+- **Review pull requests**:
+  - Find them, including your own review inbox.
+  - Read the description, diff, changed files and full activity.
+  - Leave general, inline and reply comments, raise and resolve tasks, set your reviewer status.
+  - Collect pending comments and publish them as one review.
+- **Manage pull requests**: create (default target branch and default reviewers), update, merge, decline and reopen pull requests, and create branches.
+
+Safety and limits:
+
+- **Authentication**: only an HTTP access token from the environment. No Basic auth, OAuth or per-request headers. Over HTTP transports the token is the operator's, so `ALLOW_GLOBAL_CRED_FALLBACK=true` is required (single-user deployments only).
+- **`BITBUCKET_PROJECTS_FILTER`** limits every Bitbucket tool to the listed project keys: other projects are hidden from listings and refused on direct access.
+- **`READ_ONLY_MODE=true`** disables all Bitbucket write tools.
+- **Code search** (`bitbucket_search`) uses Bitbucket's unofficial search endpoint. It only covers default branches, and it is not part of `TOOLSETS=default`; enable it with, for example, `TOOLSETS=default,bitbucket_search`.
+- **Deleting** pull requests and branches (`bitbucket_destructive`) is never enabled implicitly, not even by `TOOLSETS=all`. Name it explicitly: `TOOLSETS=all,bitbucket_destructive`.
+
+All variables are listed in [.env.example](.env.example).
 
 ## Documentation
 
